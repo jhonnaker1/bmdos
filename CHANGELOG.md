@@ -32,6 +32,16 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
 - A USB stick pulled out with the game on it starts the PC again without
   it
 
+- FujiNet on COM1 or COM2 (menu Network, `fujinet=1`, `fujinet_host`,
+  `fujinet_port`, `fujinet_com`): BMDOS connects to FujiNet-PC built for
+  RS-232 (`build.sh -p RS232`, `[BOIP] enabled=1`, port 1985) and carries
+  the serial line's bytes both ways (`src/port/fujinet.cpp`, a DOSBox
+  serial port of BMDOS's own). For fujinet-msdos's FUJINET.SYS and tools.
+  Sim-tested with a stand-in and a real FujiNet-PC connection; DOS's driver
+  not yet tried
+- From BMCoco and BMApple2's FujiNet work: the idea; the Wi-Fi key fix
+  is still to carry over
+
 From BMMacintosh 0.3.1:
 
 - The picture keeps its shape on 5:4 and 16:10 displays

@@ -122,8 +122,9 @@ else
 fi
 
 echo "A ZIP: its programs, the keyboard at the DOS prompt, the PC speaker"
-# The start menu lists BEEP.COM, JOY.COM, then "Go to Command Line".
-run zip "content=$ZIP" "$(key $DOWN 200)$(key $DOWN 205)$(key $ENTER 210)300 type BEEP\n$(key $ENTER 330)380 audio\n420 audio\n$(key $SPACE 430)480 audio\n520 audio\n530 quit\n"
+# The start menu lists BEEP.COM, JOY.COM, SERIAL.COM, then "Go to Command
+# Line".
+run zip "content=$ZIP" "$(key $DOWN 200)$(key $DOWN 205)$(key $DOWN 207)$(key $ENTER 210)300 type BEEP\n$(key $ENTER 330)380 audio\n420 audio\n$(key $SPACE 430)480 audio\n520 audio\n530 quit\n"
 check_log zip "starting \./dos/bmdostest\.zip" "the ZIP is the PC's content"
 check_log zip "Program: BEEP" "BEEP typed at the prompt runs BEEP.COM"
 before=$(sound zip 1) during=$(sound zip 2) after1=$(sound zip 3) after2=$(sound zip 4)
@@ -212,6 +213,35 @@ cp "$OUT/zips/bmdostest.zip" "$OUT/usb/usb/"
 check_log usb "starting usb/bmdostest\.zip" "started from the stick"
 check_log usb "USB stick 1 out: the PC's content was on it" "the stick pulled out is noticed"
 check_log usb "usb/bmdostest\.zip was on the USB stick pulled out: starting without it" "the PC starts again without it"
+
+echo "FujiNet: COM1 to a FujiNet-PC (a stand-in) over TCP"
+# fake_fujinet.py listens as FujiNet-PC's BoIP does (BMDOS connects to it),
+# and answers each byte with its case flipped; SERIAL.COM sends BMDOS out of COM1 and ends
+# once five bytes have come back.
+FN_PORT=$((47000 + $$ % 1000))
+mkdir -p "$OUT/fujinet/dos"
+cp "$OUT/zips/bmdostest.zip" "$OUT/fujinet/dos/"
+python3 "$HERE/fake_fujinet.py" $FN_PORT 60 > "$OUT/fujinet/fake.txt" 2>&1 &
+fake=$!
+sleep 0.5
+(cd "$OUT/fujinet" && printf "$(key $DOWN 200)$(key $DOWN 205)$(key $DOWN 210)$(key $ENTER 220)300 type serial\n$(key $ENTER 400)1200 quit\n" | \
+    BMDOS_CMDLINE="root=. content=./dos/bmdostest.zip fujinet=1 fujinet_host=127.0.0.1 fujinet_port=$FN_PORT" \
+    "$SIM" > log.txt 2>&1)
+sleep 1
+kill $fake 2>/dev/null
+check_log fujinet "FujiNet on COM1" "the FujiNet port is COM1"
+check_log fujinet "FujiNet-PC connected \(127\.0\.0\.1:[0-9]+\), on COM1" "connected to FujiNet-PC"
+check_log fujinet "Program: SERIAL" "SERIAL.COM runs"
+if grep -q "got b'BMDOS'" "$OUT/fujinet/fake.txt"; then
+    pass "fujinet: COM1's bytes reached FujiNet-PC"
+else
+    fail "fujinet" "FujiNet-PC got no BMDOS (see out/fujinet/fake.txt)"
+fi
+if [ "$(grep -c "Program: DOSBOX" "$OUT/fujinet/log.txt")" -ge 2 ]; then
+    pass "fujinet: its answers came back in, and SERIAL.COM ended"
+else
+    fail "fujinet" "SERIAL.COM never got its five bytes back"
+fi
 
 echo "Web UI requests and the power key"
 run reboot "" '200 webui reboot\n260 quit\n'

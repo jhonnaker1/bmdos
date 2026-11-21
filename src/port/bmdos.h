@@ -122,6 +122,13 @@ int bmdos_options_changed(void);
 /* BMDOS's own choice of default for KEY over the core's, or NULL. */
 const char *bmdos_option_bmdos_default(const char *key);
 
+/* ---- fujinet.cpp --------------------------------------------------------- */
+
+/* A FujiNet on COM1 or COM2 through FujiNet-PC's RS-232 build (fujinet=1). */
+int bmdos_fujinet_enabled(void);
+void bmdos_fujinet_frame(void);
+void bmdos_fujinet_status(char *text, unsigned size);
+
 /* ---- keys.c ---------------------------------------------------------------- */
 
 /* A USB HID usage as a libretro key (RETROK_*), RETROK_UNKNOWN if none. */

@@ -161,8 +161,7 @@ void host_network_status(char *text, unsigned size);
    while the emulator waits for the next frame, and whenever it waits
    itself the emulator goes on. Returns 0 if it can't be started. */
 int host_run_in_background(void (*fn)(void *arg), void *arg);
-/* TCP connections (BMNeXT's network had them; BMDOS's PC has no
-   network, so nothing uses them yet). On the Pi
+/* TCP connections (FujiNet-PC's, src/port/fujinet.cpp). On the Pi
    they are Circle's own sockets, not the C library's: its socket calls
    hold the lock on the table of open files while they wait (connect()
    for seconds or minutes), so that a file opened meanwhile (a ROM, a

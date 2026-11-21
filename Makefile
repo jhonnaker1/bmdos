@@ -27,7 +27,8 @@ DBP := third_party/dosbox-pure
 include src/port/dosbox.mk
 
 BUILD := build
-DBP_OBJS := $(addprefix $(BUILD)/dbp/,$(DBP_SRCS_REL:.cpp=.o))
+DBP_OBJS := $(addprefix $(BUILD)/dbp/,$(DBP_SRCS_REL:.cpp=.o)) \
+            $(addprefix $(BUILD)/dbp/bmdos/,$(BMDOS_DBP_SRCS:.cpp=.o))
 DBP_LIB := $(BUILD)/libdosboxpure.a
 # BMDOS's Circle layer for the core: cooperative threads on libco, and the
 # POSIX functions newlib lacks (src/port/circle/README.md).
@@ -110,6 +111,11 @@ $(BUILD)/dbp/%.o: $(DBP)/%.cpp $(BUILD)/dbp_flags
 	@mkdir -p $(dir $@)
 	@echo "  CPP   $<"
 	@$(CPP) $(DBP_PI_FLAGS) -c -o $@ $<
+
+$(BUILD)/dbp/bmdos/%.o: src/port/%.cpp $(BUILD)/dbp_flags src/host.h
+	@mkdir -p $(dir $@)
+	@echo "  CPP   $<"
+	@$(CPP) $(DBP_PI_FLAGS) -Wall -Wno-unused-parameter -c -o $@ $<
 
 $(DBP_LIB): $(DBP_OBJS)
 	@echo "  AR    $@"

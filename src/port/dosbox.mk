@@ -13,6 +13,9 @@
 
 DBP_SRCS := $(sort $(wildcard $(DBP)/*.cpp $(DBP)/src/*.cpp $(DBP)/src/*/*.cpp \
                               $(DBP)/src/*/*/*.cpp))
+# BMDOS's own files built with DOSBox Pure's headers and flags (src/port).
+BMDOS_DBP_SRCS := fujinet.cpp
+
 # Relative to $(DBP), for the object files' names.
 DBP_SRCS_REL := $(patsubst $(DBP)/%,%,$(DBP_SRCS))
 

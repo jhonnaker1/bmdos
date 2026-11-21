@@ -8,6 +8,9 @@ the tests need no game:
             a key is pressed, then prints BEEP DONE.
   JOY.COM   waits for the joystick's first button (port 201h, bit 4 low),
             then prints FIRE PRESSED.
+  SERIAL.COM sends BMDOS out of COM1 (the BIOS's INT 14h), then waits for
+            five bytes to come back in and prints them (the FujiNet test:
+            fake_fujinet.py answers each byte with its case flipped).
 
 Part of BMDOS. See LICENSE for licensing details.
 """
@@ -35,7 +38,28 @@ JOY = bytes([
 ]) + b"FIRE PRESSED\r\n$"
 assert JOY.index(b"FIRE") == 0x10
 
+SERIAL = bytes([
+    0xBE, 0x27, 0x01,              # 100: mov si,msg (0127h)
+    0xAC,                          # 103: lodsb
+    0x3C, 0x24,                    # 104: cmp al,'$'
+    0x74, 0x08,                    # 106: je 110h
+    0xB4, 0x01, 0x31, 0xD2,        # 108: mov ah,1 / xor dx,dx (COM1)
+    0xCD, 0x14,                    # 10C: int 14h: send AL
+    0xEB, 0xF3,                    # 10E: jmp 103h
+    0xB9, 0x05, 0x00,              # 110: mov cx,5
+    0xB4, 0x02, 0x31, 0xD2,        # 113: mov ah,2 / xor dx,dx
+    0xCD, 0x14,                    # 117: int 14h: receive into AL
+    0xF6, 0xC4, 0x80,              # 119: test ah,80h (timed out)
+    0x75, 0xF5,                    # 11C: jnz 113h: wait on
+    0x88, 0xC2, 0xB4, 0x02,        # 11E: mov dl,al / mov ah,2
+    0xCD, 0x21,                    # 122: int 21h: print it
+    0xE2, 0xED,                    # 124: loop 113h
+    0xC3,                          # 126: ret
+]) + b"BMDOS$"
+assert SERIAL.index(b"BMDOS") == 0x27
+
 out = sys.argv[1] if len(sys.argv) > 1 else "bmdostest.zip"
 with zipfile.ZipFile(out, "w") as z:
     z.writestr("BEEP.COM", BEEP)
     z.writestr("JOY.COM", JOY)
+    z.writestr("SERIAL.COM", SERIAL)

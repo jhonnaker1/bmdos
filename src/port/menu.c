@@ -505,13 +505,16 @@ static int scan_wifi(void)
 
 static void network_menu(void)
 {
-	enum { N_DEVICE, N_SCAN, N_SSID, N_PASSWORD, N_COUNTRY, N_WEBUI, N_PIN, N_TIMEZONE, N_REBOOT };
+	enum { N_DEVICE, N_SCAN, N_SSID, N_PASSWORD, N_COUNTRY, N_WEBUI, N_PIN, N_TIMEZONE,
+	       N_FUJINET, N_FUJINET_HOST, N_FUJINET_COM, N_REBOOT };
 	static const char *const devices[] = {"off", "ethernet", "wifi", NULL};
 	static const char *const device_names[] = {"Off", "Ethernet", "Wi-Fi", NULL};
 	int sel = 2;
 	for (;;) {
-		char status[64], tz[16];
+		char status[64], tz[16], fujinet[64];
 		const char *net = host_option("network", "off");
+		const char *com = strcmp(host_option("fujinet_com", "1"), "2") == 0 ? "COM2" : "COM1";
+		const char *fn_host = host_option("fujinet_host", "");
 		const char *pin = host_option("webui_pin", "");
 		int device = strcmp(net, "ethernet") == 0 ? 1 : strcmp(net, "wifi") == 0 ? 2 : 0;
 		int minutes = host_option_int("timezone", 0);
@@ -519,6 +522,7 @@ static void network_menu(void)
 
 		read_wifi_config();
 		host_network_status(status, sizeof(status));
+		bmdos_fujinet_status(fujinet, sizeof fujinet);
 		if (minutes == 0)
 			strcpy(tz, "UTC");
 		else
@@ -535,6 +539,10 @@ static void network_menu(void)
 				{"Web UI", NULL, check(setting_on("webui", TRUE)), N_WEBUI},
 				{"Web UI PIN", pin[0] ? pin : "(none)", OSD_ITEM_SUBMENU, N_PIN},
 				{"Time Zone", tz, OSD_ITEM_SUBMENU, N_TIMEZONE},
+				{"FujiNet (FujiNet-PC)", NULL, check(setting_on("fujinet", FALSE)), N_FUJINET},
+				{"FujiNet-PC's Address", fn_host[0] ? fn_host : "(none)", OSD_ITEM_SUBMENU, N_FUJINET_HOST},
+				{"FujiNet's Port", com, OSD_ITEM_SUBMENU, N_FUJINET_COM},
+				{fujinet, NULL, OSD_ITEM_LABEL, -1},
 				{"", NULL, OSD_ITEM_LABEL, -1},
 				{"Changes apply after a reboot.", NULL, OSD_ITEM_LABEL, -1},
 				{"Reboot Now", NULL, 0, N_REBOOT},
@@ -595,6 +603,33 @@ static void network_menu(void)
 			h = osd_choose("Time Zone", zones, current);
 			if (h >= 0 && h != current) {
 				save_setting_int("timezone", (h - 12) * 60);
+				reboot_needed = TRUE;
+			}
+			break;
+		}
+		case N_FUJINET:
+			save_setting("fujinet", setting_on("fujinet", FALSE) ? "0" : "1");
+			reboot_needed = TRUE;
+			break;
+		case N_FUJINET_HOST: {
+			char text[64];
+			snprintf(text, sizeof text, "%s", fn_host);
+			if (osd_edit("FujiNet-PC's Address (computer:port)", text, sizeof text, FALSE)) {
+				char *colon = strrchr(text, ':');
+				if (colon != NULL) {
+					*colon = '\0';
+					save_setting("fujinet_port", colon + 1);
+				}
+				save_setting("fujinet_host", text);
+				reboot_needed = TRUE;
+			}
+			break;
+		}
+		case N_FUJINET_COM: {
+			static const char *const ports[] = {"COM1", "COM2", NULL};
+			i = osd_choose("FujiNet's Port", ports, com[3] == '2');
+			if (i >= 0) {
+				save_setting("fujinet_com", i == 1 ? "2" : "1");
 				reboot_needed = TRUE;
 			}
 			break;

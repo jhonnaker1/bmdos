@@ -33,7 +33,8 @@ DBP_ALL_FLAGS := $(DBP_CXXFLAGS) -g $(DBP_RENAMES) $(BMA_THREADS) $(DBP_SIM_FLAG
 CFLAGS = -O2 -g -std=gnu11 -I $(ROOT)/src/port -I $(DBP)/libretro-common/include \
          -DBMDOS_HOST_LIBC -DDOSBOX_PURE_VERSION=\"$(DOSBOX_PURE_VERSION)\"
 
-DBP_OBJS := $(addprefix $(OUT)/dbp/,$(DBP_SRCS_REL:.cpp=.o))
+DBP_OBJS := $(addprefix $(OUT)/dbp/,$(DBP_SRCS_REL:.cpp=.o)) \
+            $(addprefix $(OUT)/dbp/bmdos/,$(BMDOS_DBP_SRCS:.cpp=.o))
 DBP_LIB := $(OUT)/libdosboxpure.a
 PORT_OBJS := $(addprefix $(OUT)/port/,platform.o coreopts.o vfs.o keys.o osd.o menu.o clock.o) \
              $(OUT)/port/threads.o $(OUT)/port/libco.o
@@ -53,6 +54,10 @@ $(DBP_LIB): $(DBP_OBJS)
 $(OUT)/dbp_flags: FORCE
 	@mkdir -p $(OUT)
 	@if [ "$$(cat $@ 2>/dev/null)" != "$(DBP_ALL_FLAGS)" ]; then echo "$(DBP_ALL_FLAGS)" > $@; fi
+
+$(OUT)/dbp/bmdos/%.o: $(ROOT)/src/port/%.cpp $(OUT)/dbp_flags $(ROOT)/src/host.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(DBP_ALL_FLAGS) -Wall -Wno-unused-parameter -c -o $@ $<
 
 $(OUT)/dbp/%.o: $(DBP)/%.cpp $(OUT)/dbp_flags
 	@mkdir -p $(dir $@)

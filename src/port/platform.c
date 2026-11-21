@@ -1192,6 +1192,9 @@ void bmdos_main(void)
 		bma_threads_yield();
 		if (core_menu_frames > 0)
 			core_menu_frames--;
+		/* FujiNet-PC's connection, and its COM port in a DOSBox that has
+		   just set up its own (fujinet.cpp). */
+		bmdos_fujinet_frame();
 		speed_core += host_time() - core_start;
 		speed_frames++;
 		/* Frames without sound (the PC starting): silence instead, so

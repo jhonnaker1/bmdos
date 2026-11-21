@@ -406,8 +406,8 @@ extern "C" int host_run_in_background(void (*fn)(void *arg), void *arg) {
 }
 
 //
-// TCP connections for the emulator (host_tcp_*, see host.h; from BMCoco, for
-// BMNeXT's network; unused by BMDOS yet): Circle's sockets. A received segment is kept here until it has all been read
+// TCP connections for the emulator (host_tcp_*, see host.h; from BMCoco; in
+// BMDOS, FujiNet-PC's): Circle's sockets. A received segment is kept here until it has all been read
 // (CSocket::Receive() drops what doesn't fit the buffer it is given). All
 // on core 1, in the emulator or a background task, which take turns.
 //
