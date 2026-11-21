@@ -26,6 +26,9 @@
  * BMDOS_SIM_CONNECT_FRAMES=N makes background work (the modem's
  * connecting) start N frames late, as a slow server would on the Pi.
  *
+ * BMDOS_SIM_PACE=1 keeps the virtual clock to the real one's pace, for a
+ * script talking to something that runs in real time (FujiNet-PC).
+ *
  * BMDOS_SIM_RATE=48000 plays the sound at the Pi 4 and 5's HDMI rate
  * (the latency asked for is taken at 44.1 kHz, as there).
  *
@@ -750,6 +753,22 @@ void host_video_present(int wait_vsync)
 		now = ((long) (now / period + 1e-6) + 1) * period;
 	} else {
 		now += 1e-4;
+	}
+	/* BMDOS_SIM_PACE=1: the virtual clock no faster than the real one, for
+	   a script with something on the far end that runs in real time
+	   (FujiNet-PC). */
+	{
+		static int pace = -1;
+		static double offset;
+		if (pace < 0) {
+			pace = getenv("BMDOS_SIM_PACE") != NULL;
+			offset = real_time() - now;
+		}
+		if (pace) {
+			double ahead = now + offset - real_time();
+			if (ahead > 0.0)
+				usleep((useconds_t) (ahead * 1e6));
+		}
 	}
 	tick();
 }

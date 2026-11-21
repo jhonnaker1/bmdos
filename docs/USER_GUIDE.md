@@ -209,10 +209,13 @@ it has no way to reach an emulator.
    BMDOS tries again every 5 seconds while it can't connect.
 
 In DOS, load `FUJINET.SYS` and use FujiNet's tools as on a real PC with a
-FujiNet. DOSBox Pure's own DOS doesn't read `CONFIG.SYS`, so boot a DOS
-that does (FreeDOS or MS-DOS on a hard disk image in `dos/system`, see
-SYSTEM.txt) with `DEVICE=FUJINET.SYS` in its `CONFIG.SYS`, or load the
-driver from the prompt with a loader such as FreeDOS's `DEVLOAD`.
+FujiNet (the tools reach FujiNet through the driver's INT F5). DOSBox
+Pure's own DOS doesn't read `CONFIG.SYS`, and has no room for a driver's
+drives (FreeDOS's `DEVLOAD` loads `FUJINET.SYS` but then stops: "free
+drive letter not found"), so boot a real DOS: FreeDOS or MS-DOS, on a
+floppy or hard disk image, with `DEVICE=FUJINET.SYS` in its `CONFIG.SYS`
+(a hard disk image in `dos/system` is offered in DOSBox Pure's start
+menu, see SYSTEM.txt). That has not been tried with BMDOS yet.
 
 Settings: `fujinet=1`, `fujinet_host` (the computer's address),
 `fujinet_port` (1985 by default), `fujinet_com` (1 or 2).
