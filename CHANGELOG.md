@@ -38,8 +38,9 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
   the serial line's bytes both ways (`src/port/fujinet.cpp`, a DOSBox
   serial port of BMDOS's own). For fujinet-msdos's FUJINET.SYS and tools;
   the User Guide's FujiNet section says how.
-  Sim-tested with a stand-in and a real FujiNet-PC connection; DOS's driver
-  not yet tried
+  Tried in the simulator with a real FujiNet-PC: MS-DOS 6.22 with
+  FUJINET.SYS (v1.6.1) attached FujiNet's drives E: to L:, read its DOS
+  disk and ran its CONFIG program
 - From BMCoco and BMApple2 (0.5.13, 0.4.6): changing a Wi-Fi setting in
   the menu no longer spoils a Wi-Fi key of 64 hex digits (as
   `wpa_passphrase` writes it) or a password with a `"` in it

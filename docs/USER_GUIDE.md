@@ -211,11 +211,20 @@ it has no way to reach an emulator.
 In DOS, load `FUJINET.SYS` and use FujiNet's tools as on a real PC with a
 FujiNet (the tools reach FujiNet through the driver's INT F5). DOSBox
 Pure's own DOS doesn't read `CONFIG.SYS`, and has no room for a driver's
-drives (FreeDOS's `DEVLOAD` loads `FUJINET.SYS` but then stops: "free
-drive letter not found"), so boot a real DOS: FreeDOS or MS-DOS, on a
-floppy or hard disk image, with `DEVICE=FUJINET.SYS` in its `CONFIG.SYS`
-(a hard disk image in `dos/system` is offered in DOSBox Pure's start
-menu, see SYSTEM.txt). That has not been tried with BMDOS yet.
+drives, so boot a real DOS from a hard disk image of your own in
+`dos/system` (DOSBox Pure's start menu offers it: *Run Installed Operating
+System*), with the driver on it and `DEVICE=C:\FUJINET.SYS` in its
+`CONFIG.SYS`. The driver is on FujiNet-PC's own DOS disk, which it mounts
+in its first slot at start, and from
+[fujinet-msdos's releases](https://github.com/FujiNetWIFI/fujinet-msdos/releases).
+
+Tried in the PC simulator with MS-DOS 6.22 and FujiNet-PC v1.6
+(fujinet-firmware 21137d7): the driver found FujiNet, set DOS's clock
+from it and attached drives E: to L:; `DIR E:` lists FujiNet's DOS disk
+(CONFIG, FMOUNT, NGET, NCOPY, FNSHARE and the drivers), and `E:CONFIG`
+shows FujiNet's hosts and drive slots. A FreeDOS 1.3 hard disk image made
+by 86Box (4 GB, FAT32) didn't start in DOSBox Pure ("read error while
+reading drive", before FreeDOS itself).
 
 Settings: `fujinet=1`, `fujinet_host` (the computer's address),
 `fujinet_port` (1985 by default), `fujinet_com` (1 or 2).
