@@ -8,6 +8,11 @@ the tests need no game:
             a key is pressed, then prints BEEP DONE.
   JOY.COM   waits for the joystick's first button (port 201h, bit 4 low),
             then prints FIRE PRESSED.
+  IRQ.COM   (in its own ZIP, the second argument, with ZZZ.COM, which
+            does nothing) issues INT 75h, 76h and
+            77h, IRQ 13 to 15's vectors, then prints IRQ OK: with the
+            vectors left at 0000:0000 (DOSBox Pure's BIOS leaves them so;
+            src/port/biosfix.cpp sets them) the PC would run at address 0.
   SERIAL.COM sends BMDOS out of COM1 (the BIOS's INT 14h), then waits for
             five bytes to come back in and prints them (the FujiNet test:
             fake_fujinet.py answers each byte with its case flipped).
@@ -58,8 +63,22 @@ SERIAL = bytes([
 ]) + b"BMDOS$"
 assert SERIAL.index(b"BMDOS") == 0x27
 
+IRQ = bytes([
+    0xCD, 0x75, 0xCD, 0x76, 0xCD, 0x77,  # 100: int 75h / int 76h / int 77h
+    0xB4, 0x09, 0xBA, 0x0E, 0x01,        # 106: mov ah,9 / mov dx,010Eh
+    0xCD, 0x21, 0xC3,                    # 10B: int 21h / ret
+]) + b"IRQ OK\r\n$"
+assert IRQ.index(b"IRQ OK") == 0x0E
+
 out = sys.argv[1] if len(sys.argv) > 1 else "bmdostest.zip"
 with zipfile.ZipFile(out, "w") as z:
     z.writestr("BEEP.COM", BEEP)
     z.writestr("JOY.COM", JOY)
     z.writestr("SERIAL.COM", SERIAL)
+if len(sys.argv) > 2:
+    with zipfile.ZipFile(sys.argv[2], "w") as z:
+        z.writestr("IRQ.COM", IRQ)
+        # A second program, so that DOSBox Pure shows its start menu
+        # rather than starting IRQ.COM in its first frame, before BMDOS
+        # has set the vectors.
+        z.writestr("ZZZ.COM", bytes([0xC3]))

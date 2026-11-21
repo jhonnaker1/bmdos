@@ -1195,6 +1195,9 @@ void bmdos_main(void)
 		/* FujiNet-PC's connection, and its COM port in a DOSBox that has
 		   just set up its own (fujinet.cpp). */
 		bmdos_fujinet_frame();
+		/* IRQ 13 to 15's vectors, which DOSBox Pure's BIOS leaves empty
+		   (biosfix.cpp). */
+		bmdos_biosfix_frame();
 		speed_core += host_time() - core_start;
 		speed_frames++;
 		/* Frames without sound (the PC starting): silence instead, so

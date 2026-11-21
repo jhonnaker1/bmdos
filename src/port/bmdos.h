@@ -129,6 +129,11 @@ int bmdos_fujinet_enabled(void);
 void bmdos_fujinet_frame(void);
 void bmdos_fujinet_status(char *text, unsigned size);
 
+/* ---- biosfix.cpp ---------------------------------------------------------- */
+
+/* Points IRQ 13, 14 and 15's empty vectors at a default handler. */
+void bmdos_biosfix_frame(void);
+
 /* ---- keys.c ---------------------------------------------------------------- */
 
 /* A USB HID usage as a libretro key (RETROK_*), RETROK_UNKNOWN if none. */

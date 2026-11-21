@@ -45,6 +45,15 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
   the menu no longer spoils a Wi-Fi key of 64 hex digits (as
   `wpa_passphrase` writes it) or a password with a `"` in it
 
+- IRQ 13, 14 and 15 (INT 75h to 77h) get default handlers, as a real
+  BIOS has: DOSBox Pure's BIOS leaves them at 0000:0000 while its IDE
+  emulation raises IRQ 14 and 15, so FreeDOS's CD-ROM drivers UDVD2 and
+  UIDE sent the PC to address 0 at the CD drive's first interrupt
+  (FreeDOS 1.4 stopped while it started). `src/port/biosfix.cpp`; test
+  `irq`. Still not working: ATAPICDD, which soft-resets the controller and
+  waits for the reset signature that DOSBox Pure's (and DOSBox-X's) IDE
+  emulation doesn't load after a soft reset
+
 From BMMacintosh 0.3.1:
 
 - The picture keeps its shape on 5:4 and 16:10 displays

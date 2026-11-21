@@ -24,7 +24,7 @@ make -s -C "$HERE" -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || ec
 
 rm -rf "$OUT"
 mkdir -p "$OUT/zips"
-python3 "$HERE/dos/make_test_zip.py" "$OUT/zips/bmdostest.zip" || exit 1
+python3 "$HERE/dos/make_test_zip.py" "$OUT/zips/bmdostest.zip" "$OUT/zips/irqtest.zip" || exit 1
 
 FAILED=0
 pass() { echo "PASS  $1"; }
@@ -213,6 +213,24 @@ cp "$OUT/zips/bmdostest.zip" "$OUT/usb/usb/"
 check_log usb "starting usb/bmdostest\.zip" "started from the stick"
 check_log usb "USB stick 1 out: the PC's content was on it" "the stick pulled out is noticed"
 check_log usb "usb/bmdostest\.zip was on the USB stick pulled out: starting without it" "the PC starts again without it"
+
+echo "IRQ 13 to 15 have handlers (DOSBox Pure's BIOS leaves them empty)"
+# IRQ.COM, the only program in its ZIP, issues INT 75h, 76h and 77h: with
+# the vectors at 0000:0000 the PC would stop there (FreeDOS's UDVD2 did,
+# at the CD drive's IRQ 14).
+mkdir -p "$OUT/irq/dos"
+cp "$OUT/zips/irqtest.zip" "$OUT/irq/dos/"
+(cd "$OUT/irq" && printf "$(key $ENTER 200)400 quit\n" | \
+    BMDOS_CMDLINE="root=. content=./dos/irqtest.zip" "$SIM" > log.txt 2>&1)
+check_log irq "default handlers for IRQ 13, 14 and 15" "BMDOS set their vectors"
+check_log irq "Program: IRQ" "IRQ.COM runs"
+if [ "$(grep -c "Program: DOSBOX" "$OUT/irq/log.txt")" -ge 1 ] && \
+   [ "$(grep -n "Program: IRQ" "$OUT/irq/log.txt" | head -1 | cut -d: -f1)" -lt \
+     "$(grep -n "Program: DOSBOX" "$OUT/irq/log.txt" | tail -1 | cut -d: -f1)" ]; then
+    pass "irq: INT 75h, 76h and 77h returned, and IRQ.COM ended"
+else
+    fail "irq" "IRQ.COM never came back (see out/irq/log.txt)"
+fi
 
 echo "FujiNet: COM1 to a FujiNet-PC (a stand-in) over TCP"
 # fake_fujinet.py listens as FujiNet-PC's BoIP does (BMDOS connects to it),
