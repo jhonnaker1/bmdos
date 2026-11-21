@@ -383,25 +383,43 @@ static void sound_menu(void)
 
 /* ---- Network --------------------------------------------------------------- */
 
-static char wifi_ssid[33], wifi_psk[64], wifi_country[3];
+/* The Wi-Fi network: its name, and its password (8 to 63 characters,
+   written in quotes) or a key worked out from it (64 hex digits, written
+   as they are: wifi_psk_raw), as wpa_supplicant.conf has them. From
+   BMCoco and BMApple2. */
+static char wifi_ssid[33], wifi_psk[65], wifi_country[3];
+static int wifi_psk_raw;
 
 static void wpa_path(char *path, size_t size)
 {
 	bmdos_card_path(path, (unsigned) size, "", WPA_CONFIG);
 }
 
-static void copy_quoted(char *dst, size_t size, const char *src)
+/* A value from wpa_supplicant.conf: in quotes up to the last one on the
+   line, as wpa_supplicant reads it (so a password may have a " in it), or
+   up to the end of the line. Returns whether it was in quotes. */
+static int copy_quoted(char *dst, size_t size, const char *src)
 {
-	const char *end;
-	if (*src == '"')
+	const char *end = src + strcspn(src, "\r\n");
+	int quoted = FALSE;
+	if (*src == '"') {
+		const char *last;
 		src++;
-	end = strchr(src, '"');
-	if (end == NULL)
-		end = src + strcspn(src, "\r\n");
+		for (last = end; last > src && last[-1] != '"'; last--)
+			;
+		if (last > src) {
+			end = last - 1;
+			quoted = TRUE;
+		}
+	} else {
+		while (end > src && (end[-1] == ' ' || end[-1] == '\t'))
+			end--;
+	}
 	if ((size_t) (end - src) >= size)
 		end = src + size - 1;
 	memcpy(dst, src, end - src);
 	dst[end - src] = '\0';
+	return quoted;
 }
 
 static void read_wifi_config(void)
@@ -409,6 +427,7 @@ static void read_wifi_config(void)
 	char path[256], line[160];
 	FILE *f;
 	wifi_ssid[0] = wifi_psk[0] = '\0';
+	wifi_psk_raw = FALSE;
 	strcpy(wifi_country, "US");
 	wpa_path(path, sizeof(path));
 	f = fopen(path, "r");
@@ -421,7 +440,7 @@ static void read_wifi_config(void)
 		else if (strncmp(p, "ssid=", 5) == 0 && wifi_ssid[0] == '\0')
 			copy_quoted(wifi_ssid, sizeof(wifi_ssid), p + 5);
 		else if (strncmp(p, "psk=", 4) == 0 && wifi_psk[0] == '\0')
-			copy_quoted(wifi_psk, sizeof(wifi_psk), p + 4);
+			wifi_psk_raw = !copy_quoted(wifi_psk, sizeof(wifi_psk), p + 4);
 	}
 	fclose(f);
 }
@@ -435,7 +454,9 @@ static int write_wifi_config(void)
 	if (f == NULL)
 		return FALSE;
 	fprintf(f, "country=%s\n\nnetwork={\n\tssid=\"%s\"\n", wifi_country, wifi_ssid);
-	if (wifi_psk[0] != '\0')
+	if (wifi_psk[0] != '\0' && wifi_psk_raw)
+		fprintf(f, "\tpsk=%s\n\tkey_mgmt=WPA-PSK\n", wifi_psk);
+	else if (wifi_psk[0] != '\0')
 		fprintf(f, "\tpsk=\"%s\"\n\tkey_mgmt=WPA-PSK\n", wifi_psk);
 	else
 		fprintf(f, "\tkey_mgmt=NONE\n");
@@ -449,6 +470,8 @@ static void edit_wifi(const char *title, char *value, size_t size, int secret)
 	snprintf(text, sizeof(text), "%s", value);
 	if (osd_edit(title, text, size < sizeof(text) ? size : sizeof(text), secret)) {
 		snprintf(value, size, "%s", text);
+		if (value == wifi_psk)
+			wifi_psk_raw = FALSE;     /* typed: a password */
 		if (write_wifi_config())
 			reboot_needed = TRUE;
 		else
@@ -491,8 +514,10 @@ static int scan_wifi(void)
 	chosen = osd_menu("Choose a Wi-Fi Network", items, n, &sel);
 	if (chosen < 0)
 		return 0;
-	if (!aps[chosen].secure || strcmp(wifi_ssid, aps[chosen].ssid) != 0)
+	if (!aps[chosen].secure || strcmp(wifi_ssid, aps[chosen].ssid) != 0) {
 		wifi_psk[0] = '\0';
+		wifi_psk_raw = FALSE;
+	}
 	snprintf(wifi_ssid, sizeof(wifi_ssid), "%s", aps[chosen].ssid);
 	if (!write_wifi_config()) {
 		osd_message("Cannot write " WPA_CONFIG, TRUE);

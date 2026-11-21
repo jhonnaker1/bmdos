@@ -243,6 +243,25 @@ else
     fail "fujinet" "SERIAL.COM never got its five bytes back"
 fi
 
+echo "Wi-Fi settings changed in the menu keep the Wi-Fi key (from BMCoco)"
+# A key of 64 hex digits (as wpa_passphrase writes it, not in quotes):
+# Network (the ninth item), Wi-Fi Country (four down), GB.
+KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+mkdir -p "$OUT/wifikey"
+printf 'country=US\n\nnetwork={\n\tssid="Home"\n\tpsk=%s\n\tkey_mgmt=WPA-PSK\n}\n' $KEY > "$OUT/wifikey/wpa_supplicant.conf"
+(cd "$OUT/wifikey" && printf "$(key $F12 200)$(for i in 1 2 3 4 5 6 7 8; do key $DOWN $((205 + i * 5)); done)$(key $ENTER 260)$(key $DOWN 270)$(key $DOWN 275)$(key $DOWN 280)$(key $DOWN 285)$(key $ENTER 290)$(key 0x2a 300)$(key 0x2a 305)310 type GB\n$(key $ENTER 330)400 quit\n" | \
+    BMDOS_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+if grep -q "^country=GB" "$OUT/wifikey/wpa_supplicant.conf"; then
+    pass "wifikey: the country changed"
+else
+    fail "wifikey" "the country didn't change (see out/wifikey/wpa_supplicant.conf)"
+fi
+if grep -q "psk=$KEY\$" "$OUT/wifikey/wpa_supplicant.conf"; then
+    pass "wifikey: the 64 digit key kept as it was"
+else
+    fail "wifikey" "the key was spoiled (see out/wifikey/wpa_supplicant.conf)"
+fi
+
 echo "Web UI requests and the power key"
 run reboot "" '200 webui reboot\n260 quit\n'
 check_log reboot "reboot requested" "reboots"

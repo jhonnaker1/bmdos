@@ -111,7 +111,8 @@ you want one). For General MIDI music, put a sound font (`.sf2`) in
 BMDOS can join your network over Ethernet or Wi-Fi and serve a web page
 for managing the SD card from any browser on the same network, so files can
 be copied to and from the Pi without taking the card out. It is the web UI
-from BMC64. (The PC itself has no network.)
+from BMC64. (The PC itself has no network card; its way onto the network
+is FujiNet, below.)
 
 Turn it on in the menu's *Network*. For Ethernet, set *Network* to Ethernet
 and reboot. For Wi-Fi, choose *Scan for Wi-Fi Networks*: the first time,
@@ -167,6 +168,55 @@ The network also sets the Pi's clock, so files saved on the card get the
 right date and time, and DOS's clock is right. Set `timezone` to your
 offset from UTC in minutes, for example `timezone=600` for UTC+10.
 
+## FujiNet
+
+A [FujiNet](https://fujinet.online/) on a PC's serial port mounts disk
+images from TNFS servers on the internet and on your network as DOS
+drives, and gives DOS programs written for it a network device (HTTP,
+TCP and more), a clock and a printer. MS-DOS reaches it with its driver
+and tools, from [fujinet-msdos](https://github.com/FujiNetWIFI/fujinet-msdos):
+`FUJINET.SYS` (the drives), `FMOUNT`, `NGET`, `NCOPY`, `FNSHARE` and more.
+
+BMDOS works with **FujiNet-PC**, FujiNet's program for a computer, built
+for the PC's serial port (RS-232) and running on a computer on the same
+network. FujiNet-PC listens for the emulator's serial port over TCP
+("BoIP"), and BMDOS connects to it: what the PC sends out of COM1 (or
+COM2) goes to FujiNet-PC, and what FujiNet-PC sends comes in, as over a
+serial cable. A FujiNet device for the PC (the RS-232 one) can't be used:
+it has no way to reach an emulator.
+
+1. On the computer, build FujiNet-PC for RS-232 from
+   [fujinet-firmware](https://github.com/FujiNetWIFI/fujinet-firmware)
+   (`./build.sh -p RS232`; see its `build-sh.md`: it needs CMake, a C++20
+   compiler and MbedTLS 3, `brew install mbedtls@3` on a Mac). The program
+   and its files end up in `build/dist`.
+2. In `build/dist/fnconfig.ini`, under `[BOIP]`, turn it on and let it
+   listen on the computer's network, not only for programs on the
+   computer itself (`localhost`, the default); leave `port` empty for
+   1985:
+   ```
+   [BOIP]
+   enabled=1
+   host=*
+   port=
+   ```
+3. Start it (`./run-fujinet` in `build/dist`).
+4. In BMDOS's menu, *Network*: turn *FujiNet (FujiNet-PC)* on, set
+   *FujiNet-PC's Address* to the computer's address (`192.168.1.20`, or
+   `192.168.1.20:1985` for another port), and *FujiNet's Port* to COM1
+   (the default of FujiNet's DOS tools, `FUJI_PORT=1`) or COM2. Reboot.
+   The *Network* page then says *Connected to 192.168.1.20, on COM1*.
+   BMDOS tries again every 5 seconds while it can't connect.
+
+In DOS, load `FUJINET.SYS` and use FujiNet's tools as on a real PC with a
+FujiNet. DOSBox Pure's own DOS doesn't read `CONFIG.SYS`, so boot a DOS
+that does (FreeDOS or MS-DOS on a hard disk image in `dos/system`, see
+SYSTEM.txt) with `DEVICE=FUJINET.SYS` in its `CONFIG.SYS`, or load the
+driver from the prompt with a loader such as FreeDOS's `DEVLOAD`.
+
+Settings: `fujinet=1`, `fujinet_host` (the computer's address),
+`fujinet_port` (1985 by default), `fujinet_com` (1 or 2).
+
 ## USB sticks
 
 Up to three USB sticks (FAT32) can hold games
@@ -208,6 +258,10 @@ edited from the web UI. DOSBox Pure's own settings are in `bmdos.cfg` too
 | `timezone`          | minutes east of UTC          | `0`      | Time zone for the network clock |
 | `usbpowerdelay`     | milliseconds                 | Circle's | Circle: wait for USB devices to power up (by default 300 ms, 510 ms behind a hub) |
 | `task_time_us`      | microseconds                 | `1000`   | The least time the network, Wi-Fi and the web UI get each frame; `0` is one turn a frame |
+| `fujinet`           | `0`, `1`                     | `0`      | Connect to FujiNet-PC, a FujiNet on the PC's serial port (see FujiNet) |
+| `fujinet_host`      | address                      | none     | The computer FujiNet-PC runs on |
+| `fujinet_port`      | port number                  | `1985`   | FujiNet-PC's BoIP port |
+| `fujinet_com`       | `1`, `2`                     | `1`      | Which COM port FujiNet is on |
 
 ## Logging
 
