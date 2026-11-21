@@ -8,6 +8,7 @@
 //
 
 #include "video.h"
+#include "layout.h"
 
 #include "../logging.h"
 
@@ -311,28 +312,12 @@ void Pi4Video::SetView(int x, int y, int w, int h, double aspect,
   m_nViewW = w;
   m_nViewH = h;
 
-  unsigned dest_h;
-  if (m_bFiltered) {
-    dest_h = (unsigned)(m_nHeight * scale);
-    m_nRepeat = 1;
-  } else {
-    unsigned repeat = (unsigned)(m_nHeight * scale) / (unsigned)h;
-    if (repeat == 0) {
-      repeat = 1;
-    }
-    m_nRepeat = repeat;
-    dest_h = repeat * h;
-  }
-  if (dest_h > m_nHeight) {
-    dest_h = m_nHeight;
-  }
-  if (dest_h == 0) {
-    dest_h = 1;
-  }
-  unsigned dest_w = (unsigned)(dest_h * aspect + 0.5);
-  if (dest_w > m_nWidth) {
-    dest_w = m_nWidth;
-  }
+  // src/av/layout.h: the height filled, the shape kept.
+  PictureLayout layout = LayOutPicture(m_nWidth, m_nHeight, (unsigned)w, (unsigned)h,
+                                       aspect, scale, !m_bFiltered);
+  m_nRepeat = layout.repeat;
+  unsigned dest_h = layout.h;
+  unsigned dest_w = layout.w;
   const unsigned bytes = m_nDepth / 8;
   dest_w &= ~(16 / bytes - 1);
   if (dest_w == 0) {
@@ -607,7 +592,9 @@ void Pi4Video::Blank(void) {
 // multiples of the view's height, smooth and CRT filling the height (times
 // SCALE). Sharp and smooth hand the HVS the view as it is; the CRT shader
 // draws at the size shown, or a whole fraction of it no more than 1080
-// lines (720 curved and smooth), which the HVS enlarges sharply.
+// lines (720 curved and smooth), which the HVS enlarges sharply, or at
+// 1080 lines enlarged smoothly where the fraction would have too few lines
+// for the scanlines (CrtDrawSize(), src/av/layout.h).
 void Pi4Video::SetViewKms(int x, int y, int w, int h, double aspect,
                           double scale) {
   if (scale <= 0.1 || scale > 1.0) {
@@ -623,23 +610,11 @@ void Pi4Video::SetViewKms(int x, int y, int w, int h, double aspect,
   m_bKmsShadowValid[0] = m_bKmsShadowValid[1] = false;
 
   const unsigned width = m_pKms->Width(), height = m_pKms->Height();
-  unsigned dest_h;
-  if (m_bFiltered) {
-    dest_h = (unsigned)(height * scale);
-  } else {
-    unsigned repeat = (unsigned)(height * scale) / (unsigned)h;
-    dest_h = (repeat == 0 ? 1 : repeat) * (unsigned)h;
-  }
-  if (dest_h > height) {
-    dest_h = height;
-  }
-  if (dest_h == 0) {
-    dest_h = 1;
-  }
-  unsigned dest_w = (unsigned)(dest_h * aspect + 0.5);
-  if (dest_w > width) {
-    dest_w = width;
-  }
+  // src/av/layout.h: the height filled, the shape kept.
+  PictureLayout layout = LayOutPicture(width, height, (unsigned)w, (unsigned)h, aspect,
+                                       scale, !m_bFiltered);
+  unsigned dest_h = layout.h;
+  unsigned dest_w = layout.w;
   unsigned dest_x = (width - dest_w) / 2;
   unsigned dest_y = (height - dest_h) / 2;
 
@@ -649,10 +624,9 @@ void Pi4Video::SetViewKms(int x, int y, int w, int h, double aspect,
     // The ARM can't draw curved and smooth at more than 720 lines; the GPU
     // can.
     unsigned max_height = m_bCurvature && m_bSmooth && m_pGpu == 0 ? 720 : 1080;
-    unsigned divide = (dest_h + max_height - 1) / max_height;
-    src_w = dest_w / divide;
-    src_h = dest_h / divide;
-    nearest = true;
+    // src/av/layout.h: a whole fraction of the size shown, or the most
+    // lines where that would lose the scanlines.
+    CrtDrawSize(dest_w, dest_h, (unsigned)h, max_height, &src_w, &src_h, &nearest);
     m_nKmsSrcW = src_w;
     m_nKmsSrcH = src_h;
     // While the GPU draws, the ARM's scaler isn't needed (it is set up
