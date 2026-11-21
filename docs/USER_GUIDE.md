@@ -222,8 +222,13 @@ Tried in the PC simulator with MS-DOS 6.22 and FujiNet-PC v1.6
 (fujinet-firmware 21137d7): the driver found FujiNet, set DOS's clock
 from it and attached drives E: to L:; `DIR E:` lists FujiNet's DOS disk
 (CONFIG, FMOUNT, NGET, NCOPY, FNSHARE and the drivers), and `E:CONFIG`
-shows FujiNet's hosts and drive slots. A FreeDOS 1.3 hard disk image made
-by 86Box (4 GB, FAT32) didn't start in DOSBox Pure ("read error while
+shows FujiNet's hosts and drive slots. FreeDOS 1.4 works the same way:
+its *LiteUSB* edition (`FD14LITE.img`, a 32 MB hard disk image, from
+freedos.org) in `dos/system`, with `DEVICE=\FUJINET.SYS` added to its
+`FDCONFIG.SYS`, `SETUP.BAT` renamed (else it starts the installer) and
+`call CDROM.BAT` taken out of its `FDAUTO.BAT` (FreeDOS's CD driver,
+UDVD2, waits for ever on DOSBox's CD drive). A FreeDOS 1.3 hard disk image
+made by 86Box (4 GB, FAT32) didn't start in DOSBox Pure ("read error while
 reading drive", before FreeDOS itself).
 
 Settings: `fujinet=1`, `fujinet_host` (the computer's address),

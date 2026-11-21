@@ -40,7 +40,7 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
   the User Guide's FujiNet section says how.
   Tried in the simulator with a real FujiNet-PC: MS-DOS 6.22 with
   FUJINET.SYS (v1.6.1) attached FujiNet's drives E: to L:, read its DOS
-  disk and ran its CONFIG program
+  disk and ran its CONFIG program; FreeDOS 1.4 (LiteUSB) the same
 - From BMCoco and BMApple2 (0.5.13, 0.4.6): changing a Wi-Fi setting in
   the menu no longer spoils a Wi-Fi key of 64 hex digits (as
   `wpa_passphrase` writes it) or a password with a `"` in it
