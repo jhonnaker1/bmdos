@@ -35,12 +35,12 @@
 //    MISC_CONFIG (DVP + 8) gates HDMI1's 108 MHz audio clock (set =
 //    off); the Pi 5's DVP is the same block ("brcm,brcm2711-dvp").
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_AV_HDMISOUND_H_
-#define BMNEXT_AV_HDMISOUND_H_
+#ifndef BMDOS_AV_HDMISOUND_H_
+#define BMDOS_AV_HDMISOUND_H_
 
 #include <circle/dmachannel.h>
 #include <circle/interrupt.h>

@@ -106,13 +106,13 @@ async function pollStatus() {
     $("i-model").textContent = s.model || "—";
     $("i-net").textContent = s.net_text || ("status " + s.net_status);
     $("i-ver").textContent = s.version
-      ? "BMNeXT " + s.version + (s.git ? " (" + s.git + ")" : "") : "—";
+      ? "BMDOS " + s.version + (s.git ? " (" + s.git + ")" : "") : "—";
     $("i-uptime").textContent = fmtUptime(s.uptime_secs);
 
     if (rebooting) {
       rebooting = false;
       $("action-msg").className = "msg";
-      $("action-msg").textContent = "BMNeXT is back online.";
+      $("action-msg").textContent = "BMDOS is back online.";
       $("qa-reboot").disabled = false;
       $("nav-reboot").disabled = false;
     }
@@ -183,20 +183,20 @@ export async function rebootNow() {
   } catch (e) {
     /* the connection usually drops as it reboots; that is expected */
   }
-  $("action-msg").textContent = "BMNeXT is rebooting. This page will reconnect automatically.";
+  $("action-msg").textContent = "BMDOS is rebooting. This page will reconnect automatically.";
   scheduleStatus(POLL_FAIL_MS);
 }
 
 async function doReboot() {
-  if (!confirm("Reboot BMNeXT now? Any unsaved emulator state will be lost.")) return;
+  if (!confirm("Reboot BMDOS now? Any unsaved emulator state will be lost.")) return;
   await rebootNow();
 }
 
 async function doShutdown() {
   if (!confirm(
-    "Shut down BMNeXT now?\n\n" +
+    "Shut down BMDOS now?\n\n" +
     "Disk images are saved first. Any other unsaved emulator state is lost, " +
-    "and BMNeXT stays off until its power is switched off and on again.")) return;
+    "and BMDOS stays off until its power is switched off and on again.")) return;
   for (const id of ["qa-shutdown", "nav-shutdown", "qa-reboot", "nav-reboot"]) {
     $(id).disabled = true;
   }
@@ -220,7 +220,7 @@ async function doShutdown() {
   pollTimer = null;
   setConn(false, "Off");
   $("action-msg").textContent =
-    "BMNeXT is shutting down. Once its screen goes blank it is safe to " +
+    "BMDOS is shutting down. Once its screen goes blank it is safe to " +
     "remove power. Reload this page after switching it on again.";
 }
 

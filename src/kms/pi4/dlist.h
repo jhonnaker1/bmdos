@@ -6,12 +6,12 @@
 //
 // Pure computation, so tools/pi4kms can test it on a PC.
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_KMS_PI4_DLIST_H_
-#define BMNEXT_KMS_PI4_DLIST_H_
+#ifndef BMDOS_KMS_PI4_DLIST_H_
+#define BMDOS_KMS_PI4_DLIST_H_
 
 #include <stdint.h>
 

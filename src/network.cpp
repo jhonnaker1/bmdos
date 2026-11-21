@@ -5,7 +5,7 @@
 // vice_network.cpp): rewritten to take its settings from cmdline.txt and
 // start the web UI and network time. The TCP receive window per network
 // is from BMC64's viceapp.cpp.
-// Changed for BMNeXT.
+// Changed for BMDOS.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@
 #include "host.h"
 
 static const char FromNetwork[] = "network";
-#define HOSTNAME "bmnext"
+#define HOSTNAME "bmdos"
 #define FIRMWARE_PATH "SD:/firmware/"
 #define WPA_CONFIG "SD:/wpa_supplicant.conf"
 // TCP receive window, in segments. A larger window nearly doubles web UI
@@ -407,7 +407,7 @@ extern "C" int host_run_in_background(void (*fn)(void *arg), void *arg) {
 
 //
 // TCP connections for the emulator (host_tcp_*, see host.h; from BMCoco, for
-// the NeXT's network here, src/port/bmnet.c): Circle's sockets. A received segment is kept here until it has all been read
+// BMNeXT's network; unused by BMDOS yet): Circle's sockets. A received segment is kept here until it has all been read
 // (CSocket::Receive() drops what doesn't fit the buffer it is given). All
 // on core 1, in the emulator or a background task, which take turns.
 //

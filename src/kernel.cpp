@@ -1,7 +1,7 @@
 //
 // kernel.cpp
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 // The USB sticks follow Circle's doc/usb-plug-and-play.txt and
@@ -30,14 +30,17 @@
 #include <circle/usb/usbhid.h>
 #include <circle_glue.h>
 
+// src/port/circle/posix.c: gettimeofday() reads the timer once it exists.
+extern "C" volatile int bma_timer_ready;
+
 extern "C" {
 // From src/port/platform.c: the emulator's entry point, which runs on core
 // 1, and its Reboot / Shut Down request.
-void bmnext_main(void);
-void bmnext_request_power(int power_off);
+void bmdos_main(void);
+void bmdos_request_power(int power_off);
 }
 
-static const char FromKernel[] = "bmnext";
+static const char FromKernel[] = "bmdos";
 
 // FatFs volumes of the USB sticks umsd1..umsd3 (Circle's
 // addon/fatfs/ffconf.h FF_VOLUME_STRS and diskio.cpp).
@@ -72,8 +75,9 @@ static inline void Core1Beat(const char *stage) {
 
 // ---- The helper core: core 3 on the Pi 5 (src/host.h) --------------------
 //
-// Runs one task at a time for the emulator, posted by core 1: the
-// NeXTdimension's i860. Waits (WFE) for one; SEV wakes it.
+// Runs one task at a time for the emulator, posted by core 1 (BMNeXT's
+// NeXTdimension i860 had it; BMDOS doesn't use it yet). Waits (WFE) for
+// one; SEV wakes it.
 
 #if defined(ARM_ALLOW_MULTI_CORE) && RASPPI >= 5
 #define HELPER_CORE 3
@@ -149,10 +153,10 @@ void CEmulatorCore::Run(unsigned nCore) {
     }
     // From here core 0's watchdog reports where core 1 stopped.
     Core1Beat("starting the emulator");
-    bmnext_main();
+    bmdos_main();
   }
 #if RASPPI >= 5
-  // Core 3 is the helper core (the NeXTdimension's i860, above).
+  // Core 3 is the helper core (above).
   if (nCore == HELPER_CORE) {
     HelperLoop();
   }
@@ -215,6 +219,7 @@ CKernel::CKernel(void)
       m_MergedModifiers(0),
       m_KeyQueueHead(0), m_KeyQueueTail(0), m_pMouse(0), m_MouseDx(0),
       m_MouseDy(0), m_MouseButtons(0), m_USBSticks(0), m_bGPIOJoysticks(false) {
+  bma_timer_ready = 1; // mTimer exists (src/port/circle/posix.c)
   s_pThis = this;
   for (unsigned i = 0; i < HOST_USB_STICKS; i++) {
     m_pUSBStick[i] = 0;
@@ -257,8 +262,8 @@ bool CKernel::Initialize(void) {
     return false;
   }
   mLogger.RegisterPanicHandler(PanicHandler);
-  mLogger.Write(FromKernel, LogNotice, "BMNeXT " BMNEXT_VERSION " (" BMNEXT_GIT
-                ", Previous " PREVIOUS_SVN ")");
+  mLogger.Write(FromKernel, LogNotice, "BMDOS " BMDOS_VERSION " (" BMDOS_GIT
+                ", DOSBox Pure " DOSBOX_PURE_VERSION ")");
 
   if (!mTimer.Initialize()) {
     return false;
@@ -282,8 +287,8 @@ bool CKernel::Initialize(void) {
     mLogger.Write(FromKernel, LogError, "Cannot mount the SD card");
     return false;
   }
-  // Settings saved by the BMNeXT menu win over cmdline.txt.
-  mOptions.LoadSettings("SD:/bmnext.cfg");
+  // Settings saved by the BMDOS menu win over cmdline.txt.
+  mOptions.LoadSettings("SD:/bmdos.cfg");
 
   // Until here the log went to the serial port. No setting means no log.
   const char *logging = mOptions.Get("enable_logging", "off");
@@ -315,8 +320,8 @@ bool CKernel::Initialize(void) {
 
   const char *audio_out = mOptions.Get("audio_out", "auto");
 
-  // Full scale: BMNeXT's volume (the menu, volume=) is applied as the
-  // samples are written, and the NeXT sets its own (its volume keys).
+  // Full scale: BMDOS's volume (the menu, volume=) is applied as the
+  // samples are written, and DOSBox Pure has its own (DOSBox Settings).
   const int volume = 100;
 
 #if RASPPI >= 4
@@ -393,7 +398,7 @@ TShutdownMode CKernel::Run(void) {
   // One core (the Pi Zero): the emulator runs here and yields once a frame,
   // which lets the USB task and Circle's other tasks run.
   new CUSBPlugAndPlayTask;
-  bmnext_main();
+  bmdos_main();
   return ShutdownHalt;
 #else
   mEmulatorCore.Launch();
@@ -944,10 +949,9 @@ static u64 s_PresentTicks[3];
 static u64 s_TaskTicks = (u64)-1;
 
 void CKernel::VideoPresent(int wait_vsync) {
-  // Let Circle's tasks (the network, the Wi-Fi driver, the web UI, and the
-  // NeXT's own connections through them) run. They share this core with
-  // the emulator, and one turn a frame starved them while the NeXT was
-  // busy (BMAmiga's pings took 250 ms, its web UI sent 8 KB/s), so they
+  // Let Circle's tasks (the network, the Wi-Fi driver, the web UI) run.
+  // They share this core with the emulator, and one turn a frame starved
+  // them while the emulator was busy (BMAmiga's pings took 250 ms, its web UI sent 8 KB/s), so they
   // have at least s_TaskTicks, turn after turn.
   Core1Beat("running Circle tasks");
   if (s_TaskTicks == (u64)-1) {

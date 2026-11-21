@@ -26,12 +26,12 @@
 //    the rule that only Write(), GetQueueFramesAvail() and IsActive() may
 //    be called on other cores than core 0.
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_AV_SOUND_H_
-#define BMNEXT_AV_SOUND_H_
+#ifndef BMDOS_AV_SOUND_H_
+#define BMDOS_AV_SOUND_H_
 
 #include <circle/interrupt.h>
 #include <circle/sound/soundbasedevice.h>

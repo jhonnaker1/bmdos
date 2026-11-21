@@ -2,7 +2,6 @@
 	path = third_party/circle-stdlib
 	url = https://github.com/smuehlst/circle-stdlib
 	ignore = dirty
-[submodule "third_party/zlib"]
-	path = third_party/zlib
-	url = https://github.com/madler/zlib.git
-	ignore = dirty
+[submodule "third_party/dosbox-pure"]
+	path = third_party/dosbox-pure
+	url = https://codeberg.org/schelling/dosbox-pure.git

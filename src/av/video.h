@@ -3,14 +3,14 @@
 //
 // The Pi 4 and Pi 5 display: Circle's framebuffer driver (CBcmFrameBuffer), which
 // asks the VideoCore firmware for a framebuffer through the mailbox
-// property interface. The firmware puts it on the screen; BMNeXT scales
-// the NeXT's picture into it.
+// property interface. The firmware puts it on the screen; BMDOS scales
+// the PC's picture into it.
 //
-// The NeXTdimension's screen can come as 32-bit pixels instead
+// The picture can come as 32-bit pixels instead
 // (Allocate32()), shown as they are where the picture isn't filtered by
 // the ARM or the GPU (both read RGB565).
 //
-// The picture comes from Previous as RGB565 (BMA800XL's, from atari800, is
+// The picture comes from the emulator as RGB565 (BMA800XL's, from atari800, is
 // 8-bit indexed with a palette; this is its code, changed for that). Sharp
 // pixels (the default) use a 16-bit framebuffer the size of the display. Smooth scaling and the CRT shader (src/av/scaler.h) need
 // a 32-bit one; it is at most 1080 lines high (720 with curvature and
@@ -45,12 +45,12 @@
 //    semaphore.cpp: Circle's VCHIQ waits yield, which is how the Pi 3 runs
 //    them while it waits for a frame.
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_AV_VIDEO_H_
-#define BMNEXT_AV_VIDEO_H_
+#ifndef BMDOS_AV_VIDEO_H_
+#define BMDOS_AV_VIDEO_H_
 
 #include "frameshare.h"
 #include "scaler.h"
@@ -70,9 +70,9 @@ public:
   ~Pi4Video(void);
 
   // Which driver puts the picture on the screen (the video_driver option):
-  // the firmware's framebuffer, or BMNeXT's own display lists on the HVS
+  // the firmware's framebuffer, or BMDOS's own display lists on the HVS
   // (src/kms/pi4/ or, on the Pi 5, src/kms/pi5/; docs/PI4.md), on the
-  // firmware's video mode or (Kms) with BMNeXT setting the mode too.
+  // firmware's video mode or (Kms) with BMDOS setting the mode too.
   enum class Driver { Firmware, Hvs, Kms };
 
   // Core 0, at start up: takes a double buffered framebuffer and, if asked
@@ -83,8 +83,8 @@ public:
   // Core 1, from the emulator (see host.h).
   // PITCH is in bytes.
   int Allocate(int width, int height, uint16_t **pixels, int *pitch);
-  // A 32-bit source beside the RGB565 one, the same size, 0x00RRGGBB (the
-  // NeXTdimension's screen), or 0 if this display can't show it.
+  // A 32-bit source beside the RGB565 one, the same size, 0x00RRGGBB (DOSBox
+  // Pure's XRGB8888), or 0 if this display can't show it.
   uint32_t *Allocate32(int *pitch);
   // Which source is shown: 32 or 16 bits. Returns the one shown.
   int SetDepth(int bits);

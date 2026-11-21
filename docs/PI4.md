@@ -1,17 +1,17 @@
 # Raspberry Pi 4 B and Pi 400
 
-BMNeXT runs on the Pi 4 B and Pi 400 as a 64-bit kernel,
+BMDOS runs on the Pi 4 B and Pi 400 as a 64-bit kernel,
 `kernel8-rpi4.img`. The emulator, menus, USB keyboards, mice and gamepads,
 networking and the web UI work as in the rest of the family.
 
 Pi 4 support comes from [BMA800XL](https://github.com/aminch/bma800xl)
 1.1.0, by way of [BMCoco](https://github.com/jhonnaker1/bmcoco).
-BMA800XL's picture is 8-bit with a palette; BMCoco's and BMNeXT's are
-RGB565 (BMNeXT converts the NeXT's 2-bit greys or 16-bit colour as it copies it), so the
+BMA800XL's picture is 8-bit with a palette; BMCoco's and BMDOS's are
+RGB565 (BMDOS converts DOSBox Pure's 32-bit pixels as it copies them), so the
 display code (`src/av/video.cpp`, `src/av/scaler.cpp`) takes RGB565
-instead. The NeXTdimension's screen can also come in 32 bits a pixel
-(`Pi4Video::Allocate32()`), copied as it is unless the CRT shader
-filters it. The rest is BMA800XL's.
+instead. The PC's picture comes in 32 bits a pixel where the display can
+show it (`Pi4Video::Allocate32()`), copied as it is unless the CRT shader
+filters it (then RGB565). The rest is BMA800XL's.
 
 ## How it differs from the Pi 2 and 3
 
@@ -29,32 +29,32 @@ The emulator itself (`src/port/`) is the same on every board.
 
 BMA800XL has its own driver for the Pi 4's display hardware
 (`src/kms/pi4/`). It takes over the HDMI port in use (HDMI0 if both are),
-shows the NeXT's picture through the HVS, the Pi's hardware scaler, and can
+shows the PC's picture through the HVS, the Pi's hardware scaler, and can
 set the display's mode itself. It is chosen with
 `video_driver` in `cmdline.txt`:
 
 | `video_driver` | What it does |
 |---|---|
-| `kms` (default) | As `hvs`, and also sets the video mode itself, at 60 Hz (the NeXT's own 68 Hz is unusual for a display). This works for 720p and 1080p when the display lists the 60 Hz mode. |
+| `kms` (default) | As `hvs`, and also sets the video mode itself, at 60 Hz (VGA's own 70 Hz is unusual for a display). This works for 720p and 1080p when the display lists the 60 Hz mode. |
 | `hvs` | Keeps the mode set in `config.txt`. Use it for a TV that goes blank for a while when the refresh rate changes. |
 | `firmware` | The firmware's framebuffer, with the picture scaled by the ARM. Use it if the others give trouble. |
 
 If something isn't as expected (an unknown mode, a step that doesn't
 complete), the driver falls back to the firmware's mode or framebuffer.
-The log (serial, or `bmnext.log`) shows what happened, for example:
+The log (serial, or `bmdos.log`) shows what happened, for example:
 
 ```
 kms: HDMI0, HVS channel 1, 1280x720
 kms: EDID (HDMI0): 2 block(s), HDMI, 9 video modes
 kms: Video mode VIC 4, 1280x720 at 74154395 Hz pixel clock (59.923 Hz)
-BMNeXT: display refresh rate 50.053 Hz
+BMDOS: display refresh rate 50.053 Hz
 ```
 
 The driver was written by examining the Linux `vc4` driver and the BCM2711
 device tree, documenting the hardware's behaviour, and writing BMA800XL's
 own code from that.
 
-A bare metal kernel can't use the Pi 4's OpenGL ES, so BMNeXT drives
+A bare metal kernel can't use the Pi 4's OpenGL ES, so BMDOS drives
 the Pi 4's 3D GPU itself (`src/v3d/`, from BMA800XL 1.2.0, by way of
 BMCoco) to draw the smooth and CRT pictures (`smooth`, `crt_shader`,
 `crt_curvature`): crt-pi, at up to 1080 lines and scaled up to fill larger

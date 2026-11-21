@@ -10,12 +10,12 @@
 //  - how long a frame takes on one core of this PC;
 //  - the pictures are written to tools/pi4scaler/out/ as PPM files.
 //
-// BMNeXT's source is RGB565 (BMA800XL's is 8-bit indexed): the test card is
+// BMDOS's source is RGB565 (BMA800XL's is 8-bit indexed): the test card is
 // drawn with BMA800XL's palette and converted, so the checks are the same.
 //
 //   tools/pi4scaler/run_tests.sh
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
@@ -29,7 +29,7 @@
 #include <vector>
 
 // BMApple2's frame buffer (KEGS's window, all shown): a test size from
-// there; BMNeXT's is the NeXT's 1120x832.
+// there; BMDOS's is the NeXT's 1120x832.
 static const int SrcW = 704, SrcH = 462;
 static const int ViewX = 0, ViewY = 0, ViewW = 704, ViewH = 462;
 

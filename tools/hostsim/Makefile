@@ -4,106 +4,72 @@
 #   make -C tools/hostsim
 #   tools/hostsim/run_tests.sh
 #
+# DOSBox Pure is built as on the Pi (src/port/dosbox.mk), with the Pi's
+# cooperative threads (src/port/circle/threads.c, tested here too: DOSBox
+# Pure's pthread calls are renamed to them) and the simulator's virtual
+# clock (src/port/clock.c). Its dynamic recompiler is left out on a Mac
+# (Apple's Arm Macs won't run code written into ordinary memory); a Linux
+# PC has its x86 one.
+#
 
-ROOT := ../..
-PREVIOUS := $(ROOT)/third_party/previous/src
-ZLIB := $(ROOT)/third_party/zlib
-include $(ROOT)/src/port/previous.mk
+ROOT := $(abspath ../..)
+DBP := $(ROOT)/third_party/dosbox-pure
+include $(ROOT)/src/port/dosbox.mk
 
 CC ?= cc
 CXX ?= c++
-HOSTCC ?= cc
 OUT := build
-GEN := $(OUT)/gen
 
-PREVIOUS_INCLUDES = -I $(ROOT)/src/port -I $(ROOT)/src/port/compat \
-                    $(addprefix -I $(PREVIOUS)/,$(PREVIOUS_INCLUDE_DIRS)) \
-                    -I $(PREVIOUS) -I $(GEN) -I $(ZLIB)
-CFLAGS = -O2 -g -DBMNEXT_HOST_LIBC
-PREVIOUS_FLAGS = $(CFLAGS) $(PREVIOUS_CFLAGS) $(PREVIOUS_INCLUDES) \
-                 -include $(ROOT)/src/port/compat/previous_prefix.h
-PREVIOUS_CXX_FLAGS = $(CFLAGS) $(PREVIOUS_CXXFLAGS) $(PREVIOUS_INCLUDES) \
-                     -include $(ROOT)/src/port/compat/previous_prefix.h
+BMA_THREADS := $(foreach f,create join detach self attr_init attr_destroy attr_setstacksize \
+                 attr_getstacksize attr_setdetachstate mutex_init mutex_destroy mutex_lock \
+                 mutex_trylock mutex_unlock cond_init cond_destroy cond_signal \
+                 cond_broadcast cond_wait cond_timedwait,-Dpthread_$(f)=bma_pthread_$(f)) \
+               -Dsched_yield=bma_sched_yield
+ifeq ($(shell uname),Darwin)
+DBP_SIM_FLAGS := -DDISABLE_DYNAREC=1 -Dclock_gettime_nsec_np=bma_clock_gettime_nsec_np
+endif
+DBP_ALL_FLAGS := $(DBP_CXXFLAGS) -g $(DBP_RENAMES) $(BMA_THREADS) $(DBP_SIM_FLAGS)
 
-PORT_SRCS = platform.c menu.c osd.c posix_extra.c $(PREVIOUS_PORT_SRCS) \
-            $(PREVIOUS_PORT_NET_SLIRP)
+CFLAGS = -O2 -g -std=gnu11 -I $(ROOT)/src/port -I $(DBP)/libretro-common/include \
+         -DBMDOS_HOST_LIBC -DDOSBOX_PURE_VERSION=\"$(DOSBOX_PURE_VERSION)\"
 
-# SLiRP, with the PC's sockets (src/port/previous.mk).
-SLIRP_DEFS = $(PREVIOUS_SLIRP_CFLAGS) \
-             $(if $(wildcard /usr/include/sys/filio.h)$(filter Darwin,$(shell uname)),-DHAVE_SYS_FILIO_H)
-BMNET_INCLUDE = -include $(ROOT)/src/port/compat/bmnet.h
-SLIRP_FLAGS = $(PREVIOUS_FLAGS) $(SLIRP_DEFS) -I $(PREVIOUS)/slirp $(BMNET_INCLUDE)
+DBP_OBJS := $(addprefix $(OUT)/dbp/,$(DBP_SRCS_REL:.cpp=.o))
+DBP_LIB := $(OUT)/libdosboxpure.a
+PORT_OBJS := $(addprefix $(OUT)/port/,platform.o coreopts.o vfs.o keys.o osd.o menu.o clock.o) \
+             $(OUT)/port/threads.o $(OUT)/port/libco.o
+OBJS := $(PORT_OBJS) $(OUT)/host_sim.o $(OUT)/live.o
 
-# enet_next.c and rpc_sockets.c's socket calls are bmnet's too.
-$(addprefix $(OUT)/port/,$(PREVIOUS_PORT_NET_BMNET:.c=.o)): PORT_EXTRA = $(BMNET_INCLUDE)
+all: $(OUT)/bmdos_sim
 
-OBJS := $(addprefix $(OUT)/previous/,$(PREVIOUS_CORE_SRCS:.c=.o)) \
-        $(addprefix $(OUT)/previous/,$(PREVIOUS_CXX_SRCS:.cpp=.o)) \
-        $(addprefix $(OUT)/port/,$(PREVIOUS_PORT_CXX_SRCS:.cpp=.o)) \
-        $(addprefix $(OUT)/previous/cpu/,$(PREVIOUS_CPU_SRCS:.c=.o)) \
-        $(addprefix $(OUT)/gen/,$(PREVIOUS_CPUGEN_SRCS:.c=.o) $(PREVIOUS_CPUDEFS_SRC:.c=.o)) \
-        $(addprefix $(OUT)/previous/softfloat/,$(PREVIOUS_SOFTFLOAT_SRCS:.c=.o)) \
-        $(addprefix $(OUT)/previous/dsp/,$(PREVIOUS_DSP_SRCS:.c=.o)) \
-        $(addprefix $(OUT)/previous/debug/,$(PREVIOUS_DEBUG_SRCS:.c=.o)) \
-        $(addprefix $(OUT)/previous/slirp/,$(PREVIOUS_SLIRP_SRCS:.c=.o)) \
-        $(addprefix $(OUT)/zlib/,$(ZLIB_SRCS:.c=.o)) \
-        $(addprefix $(OUT)/port/,$(PORT_SRCS:.c=.o)) \
-        $(OUT)/host_sim.o $(OUT)/live.o
+$(OUT)/bmdos_sim: $(OBJS) $(DBP_LIB)
+	$(CXX) -o $@ $(OBJS) $(DBP_LIB) -lpthread -lm
 
-all: $(OUT)/bmnext_sim
+$(DBP_LIB): $(DBP_OBJS)
+	@rm -f $@
+	ar rcs $@ $(DBP_OBJS)
 
-# C++: the NeXTbus and the NeXTdimension.
-$(OUT)/bmnext_sim: $(OBJS)
-	$(CXX) -o $@ $(OBJS) -lm
+# The core's objects depend on its flags (a file holding them, rewritten
+# only when they change).
+$(OUT)/dbp_flags: FORCE
+	@mkdir -p $(OUT)
+	@if [ "$$(cat $@ 2>/dev/null)" != "$(DBP_ALL_FLAGS)" ]; then echo "$(DBP_ALL_FLAGS)" > $@; fi
 
-# The CPU core's generated sources, as Previous's build makes them
-# (src/cpu/CMakeLists.txt).
-$(GEN)/build68k: $(PREVIOUS)/cpu/build68k.c $(PREVIOUS)/cpu/writelog.c
-	@mkdir -p $(GEN)
-	$(HOSTCC) -I $(PREVIOUS)/cpu -I $(PREVIOUS)/includes -I $(ROOT)/src/port -o $@ $^
-
-$(GEN)/cpudefs.c: $(GEN)/build68k $(PREVIOUS)/cpu/table68k
-	$(GEN)/build68k < $(PREVIOUS)/cpu/table68k > $@
-
-$(GEN)/gencpu: $(GEN)/cpudefs.c $(PREVIOUS)/cpu/gencpu.c $(PREVIOUS)/cpu/readcpu.c
-	$(HOSTCC) -I $(PREVIOUS)/cpu -I $(PREVIOUS)/includes -I $(ROOT)/src/port -o $@ $^
-
-# gencpu writes into the current folder.
-$(GEN)/cpustbl.c: $(GEN)/gencpu
-	cd $(GEN) && ./gencpu > /dev/null
-
-$(addprefix $(GEN)/,$(filter-out cpustbl.c,$(PREVIOUS_CPUGEN_SRCS))) $(GEN)/cputbl.h: $(GEN)/cpustbl.c
-
-$(OUT)/gen/%.o: $(GEN)/%.c
-	@$(CC) $(PREVIOUS_FLAGS) -c -o $@ $<
-
-$(OUT)/previous/slirp/%.o: $(PREVIOUS)/slirp/%.c $(ROOT)/src/port/compat/bmnet.h
+$(OUT)/dbp/%.o: $(DBP)/%.cpp $(OUT)/dbp_flags
 	@mkdir -p $(dir $@)
-	@$(CC) $(SLIRP_FLAGS) -c -o $@ $<
+	@$(CXX) $(DBP_ALL_FLAGS) -c -o $@ $<
 
-$(OUT)/previous/%.o: $(PREVIOUS)/%.cpp $(GEN)/cputbl.h
+$(OUT)/port/%.o: $(ROOT)/src/port/%.c $(ROOT)/src/port/bmdos.h $(ROOT)/src/port/osd.h \
+                 $(ROOT)/src/host.h
 	@mkdir -p $(dir $@)
-	@$(CXX) $(PREVIOUS_CXX_FLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -Wall -Wextra -Wno-unused-parameter -c -o $@ $<
 
-$(OUT)/previous/%.o: $(PREVIOUS)/%.c $(GEN)/cputbl.h
+$(OUT)/port/threads.o: $(ROOT)/src/port/circle/threads.c
 	@mkdir -p $(dir $@)
-	@$(CC) $(PREVIOUS_FLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(BMA_THREADS) -I $(ROOT)/src/port/circle/libco -Wall -Wextra -c -o $@ $<
 
-$(OUT)/zlib/%.o: $(ZLIB)/%.c
+$(OUT)/port/libco.o: $(ROOT)/src/port/circle/libco/libco.c
 	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) $(ZLIB_CFLAGS) -c -o $@ $<
-
-$(OUT)/port/%.o: $(ROOT)/src/port/%.c $(ROOT)/src/port/bmnext.h \
-                 $(ROOT)/src/port/osd.h $(ROOT)/src/host.h $(GEN)/cputbl.h
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -std=gnu11 $(PREVIOUS_INCLUDES) -I $(PREVIOUS)/slirp $(SLIRP_DEFS) \
-	      -include $(ROOT)/src/port/compat/previous_prefix.h $(PORT_EXTRA) \
-	      -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -c -o $@ $<
-
-$(OUT)/port/%.o: $(ROOT)/src/port/%.cpp $(GEN)/cputbl.h
-	@mkdir -p $(dir $@)
-	$(CXX) $(CFLAGS) $(PREVIOUS_CXXFLAGS) $(PREVIOUS_INCLUDES) \
-	      -include $(ROOT)/src/port/compat/previous_prefix.h -c -o $@ $<
+	$(CC) -O2 -g -c -o $@ $<
 
 $(OUT)/host_sim.o: host_sim.c live.h $(ROOT)/src/host.h
 	@mkdir -p $(dir $@)
@@ -113,13 +79,9 @@ $(OUT)/live.o: live.c live.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -Wall -Wextra -DLIVE_HTML=\"$(abspath live.html)\" -c -o $@ $<
 
-# bmnet's own test (bmnet_test.c): bmnet.c with test versions of the
-# kernel's TCP and UDP. No ROMs needed.
-$(OUT)/bmnet_test: bmnet_test.c $(ROOT)/src/port/bmnet.c $(ROOT)/src/port/compat/bmnet.h $(ROOT)/src/host.h
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -Wall -I $(ROOT)/src/port -o $@ bmnet_test.c $(ROOT)/src/port/bmnet.c -lpthread
-
 clean:
-	rm -rf $(OUT)
+	rm -r $(OUT)
 
-.PHONY: all clean
+FORCE:
+
+.PHONY: all clean FORCE

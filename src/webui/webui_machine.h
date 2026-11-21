@@ -32,7 +32,7 @@ struct WebUiMachine {
 
 const WebUiMachine *WebUiMachineGet(void);
 
-// The machine running, as the menu names it ("NeXTstation Turbo").
+// The machine running ("DOSBox Pure: game.zip").
 const char *WebUiMachineName(void);
 
 // TRUE if Autostart accepts files with this extension (any case).

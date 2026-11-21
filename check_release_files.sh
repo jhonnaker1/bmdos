@@ -11,8 +11,7 @@
 SRC_DIR=$(cd "$(dirname "$0")" && pwd)
 
 # The kernels, one per board. A release has them all; a card built for one
-# board (build_sdcard.sh pi5) needs only one. The NeXT's 68040 needs a
-# Pi 4 or 5.
+# board (build_sdcard.sh pi5) needs only one. BMDOS is for the Pi 4 and 5.
 KERNELS=(
     "kernel8-rpi4.img"  # Pi 4 B, Pi 400 (64-bit)
     "kernel_2712.img"   # Pi 5, Pi 500, Pi 500+ (64-bit)
@@ -53,10 +52,9 @@ REQUIRED_FILES=(
     "LICENSE.txt"
     "README.txt"
     "licenses/README.txt"
-    "licenses/previous.txt"
-    "licenses/slirp.txt"
-    "licenses/i860.txt"
-    "licenses/zlib.txt"
+    "licenses/dosbox-pure.txt"
+    "licenses/libco.txt"
+    "licenses/LGPL-2.1.txt"
     "licenses/Apache-2.0.txt"
     "licenses/crt-pi.txt"
     "licenses/GPL-2.0.txt"
@@ -91,8 +89,9 @@ REQUIRED_FILES=(
     "firmware/LICENCE.synaptics"
 
     # User folders: the READMEs keep them in zip files
-    "disks/README.txt"
-    "roms/ROMS.txt"
+    "dos/README.txt"
+    "dos/system/README.txt"
+    "dos/saves/README.txt"
 )
 
 RELEASE=0
@@ -157,7 +156,7 @@ done
 
 # The kernels must be this version (and for a release, built from committed
 # files).
-version="BMNeXT $("$SRC_DIR/tools/version.sh" --semver) ($("$SRC_DIR/tools/version.sh" --git),"
+version="BMDOS $("$SRC_DIR/tools/version.sh" --semver) ($("$SRC_DIR/tools/version.sh" --git),"
 kernels_found=0
 for kernel in "${KERNELS[@]}"
 do
@@ -177,7 +176,7 @@ do
         echo "$kernel is not \"$version ...\": rebuild it"
         problems=1
     fi
-    if [ "$RELEASE" -eq 1 ] && grep -qaE "BMNeXT [^ ]+ \([0-9a-f]+-dirty," "$path"
+    if [ "$RELEASE" -eq 1 ] && grep -qaE "BMDOS [^ ]+ \([0-9a-f]+-dirty," "$path"
     then
         echo "$kernel was built with uncommitted changes (-dirty)"
         problems=1

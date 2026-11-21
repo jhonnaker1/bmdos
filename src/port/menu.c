@@ -1,42 +1,52 @@
 /*
- * menu.c - the BMNeXT menu.
+ * menu.c - the BMDOS menu.
  *
- * F12, a gamepad's Home button or Select+Start open it (Previous's own F12
- * opens its settings dialog). Everything about the emulated NeXT (its
- * disks, the machine, ROM, memory) and BMNeXT's own settings (video,
- * sound, network, power).
+ * F12, a gamepad's Home button or Select+Start open it. What the PC runs
+ * (a game's ZIP, a program, a disk image, chosen from the card or a USB
+ * stick), DOSBox Pure's own settings, and BMDOS's (video, sound, network,
+ * power). DOSBox Pure has its own menu as well, in the picture: its start
+ * menu, which lists the programs in a ZIP and boots a disk image, and its
+ * on-screen keyboard and gamepad mapper (on the gamepad's L3/R3 or Select,
+ * or Ctrl+Home on the keyboard).
  *
- * The NeXT's settings are Previous's (ConfigureParams): they are changed
- * here and put into effect the way Previous's own settings dialog does it
- * (bmnext_settings_apply(), which restarts the NeXT when a change needs
- * it), and kept in previous.cfg. BMNeXT's are kept in bmnext.cfg.
+ * DOSBox Pure's settings are listed as the core describes them
+ * (coreopts.c), in its own categories; a change takes effect the way it
+ * does in RetroArch (most at once, some at the PC's next start, which the
+ * setting's description says). BMDOS's are kept in bmdos.cfg, as the
+ * core's are.
  *
- * From BMCoco's, BMApple2's and BMAtariST's menu.c.
+ * From BMCoco's, BMApple2's, BMAtariST's and BMNeXT's menu.c.
  *
- * This file is part of BMNeXT, a bare metal NeXT emulator for the
+ * This file is part of BMDOS, a bare metal MS-DOS PC emulator for the
  * Raspberry Pi. See LICENSE for licensing details.
  */
 
-#include "main.h"
-#include "configuration.h"
-
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
-#include <time.h>
 
 #include "../host.h"
-#include "bmnext.h"
+#include "bmdos.h"
 #include "osd.h"
 
-#ifndef BMNEXT_VERSION
-#define BMNEXT_VERSION "dev"
+#ifndef BMDOS_VERSION
+#define BMDOS_VERSION "dev"
+#endif
+#ifndef DOSBOX_PURE_VERSION
+#define DOSBOX_PURE_VERSION "?"
 #endif
 
 #define WPA_CONFIG "wpa_supplicant.conf"
+/* Values a setting can have, at most (libretro's RETRO_NUM_CORE_OPTION_VALUES_MAX). */
+#define RETRO_VALUES 128
 
 /* Something changed that only takes effect after a reboot. */
 static int reboot_needed;
+/* The menu should close (the PC starts again). */
+static int leave_menu;
 
 /* Where the file browser was last ("" until it's first used). */
 static char browse_dir[256];
@@ -46,7 +56,7 @@ static char browse_dir[256];
 static void save_setting(const char *name, const char *value)
 {
 	if (!host_option_set(name, value) || !host_options_save())
-		osd_message("Cannot save bmnext.cfg", TRUE);
+		osd_message("Cannot save bmdos.cfg", TRUE);
 }
 
 static void save_setting_int(const char *name, int value)
@@ -72,8 +82,8 @@ static unsigned check(int on)
 
 static void power(int off)
 {
-	bmnext_request_power(off);
-	bmnext_idle();
+	bmdos_request_power(off);
+	bmdos_idle();
 }
 
 static const char *base_name(const char *path)
@@ -82,568 +92,150 @@ static const char *base_name(const char *path)
 	return slash ? slash + 1 : path;
 }
 
-/* Starts the file browser in the folder last used, or DIR on the card. */
-static int browse(const char *title, const char *dir, const char *const exts[],
-                  char *path, size_t size)
-{
-	if (browse_dir[0] == '\0')
-		bmnext_card_path(browse_dir, sizeof browse_dir, dir, "");
-	return osd_browse(title, browse_dir, sizeof browse_dir, exts, path, size);
-}
+/* ---- What the PC runs ------------------------------------------------------ */
 
-/* ---- Disks ---------------------------------------------------------------- */
-
-/* Previous's disk images: raw images of whole disks (a SCSI disk, a CD, an
-   optical disk or a floppy), whatever their name ends in. */
-static const char *const disk_exts[] = {"dsk", "img", "iso", "cdr", "raw", "hd", "od", "fd",
-                                        "bin", NULL};
-
-static const char *const scsi_types[] = {"None", "Hard Disk", "CD-ROM", "Floppy", NULL};
-
-/* ---- Blank disks ------------------------------------------------------ */
-
-/* The sizes of the empty disk images Previous comes with (its disks
-   folder): the NeXT's own drives, which Previous recognises by their size,
-   and all zeros, for NeXTSTEP's BuildDisk (or Disk.app) to label. The ones
-   marked "early" are those NeXTSTEP before 2.0 recognises. Optical disks
-   come formatted, so they aren't made here. */
-struct blank_size {
-	const char *name;
-	const char *file;
-	uint64_t bytes;
+/* What DOSBox Pure can start (its dosbox_pure_libretro.info): a game in a
+   ZIP (or .dosz, a ZIP by another name) or a folder's program, a DOS
+   program or batch file, a CD image, a floppy or hard disk image, a list
+   of disks (.m3u), a DOSBox configuration. */
+static const char *const content_exts[] = {
+	"zip", "dosz", "exe", "com", "bat", "iso", "cue", "chd", "ins", "img", "ima",
+	"vhd", "jrc", "tc", "m3u", "m3u8", "conf", NULL
 };
 
-static const struct blank_size hard_disk_sizes[] = {
-	{"105 MB", "blank105.sd", 110100480ull},
-	{"250 MB", "blank250.sd", 262144000ull},
-	{"330 MB", "blank330.sd", 346030080ull},
-	{"340 MB (early NeXTSTEP)", "blank349x.sd", 366305280ull},
-	{"400 MB", "blank400.sd", 419430400ull},
-	{"660 MB", "blank660.sd", 692060160ull},
-	{"660 MB (early NeXTSTEP)", "blank660x.sd", 692649984ull},
-	{"1.4 GB", "blank1400.sd", 1468006400ull},
-	{"2.8 GB", "blank2800.sd", 2936012800ull},
-	{NULL, NULL, 0}
-};
-
-static const struct blank_size floppy_sizes[] = {
-	{"720 KB", "blank720.fd", 737280ull},
-	{"1.44 MB", "blank1440.fd", 1474560ull},
-	{"2.88 MB", "blank2880.fd", 2949120ull},
-	{NULL, NULL, 0}
-};
-
-/* Asks which size, and makes a blank disk image of it in the card's disks
-   folder (a new name if the file is there), with progress shown: a big
-   one takes a while to write to the card. Returns 1 with its path in
-   PATH. */
-static int create_blank(const struct blank_size *sizes, char *path, size_t size)
+static void choose_content(void)
 {
-	static unsigned char zeros[256 * 1024];
-	const char *names[16];
-	char dir[FILENAME_MAX], name[64], text[96];
-	struct stat st;
-	uint64_t done = 0, total;
-	FILE *f;
-	int n, i, k;
-	for (n = 0; sizes[n].name != NULL && n < 15; n++)
-		names[n] = sizes[n].name;
-	names[n] = NULL;
-	i = osd_choose("Size of the Blank Disk", names, 0);
-	if (i < 0)
-		return 0;
-	total = sizes[i].bytes;
-	bmnext_card_path(dir, sizeof dir, "disks", "");
-	mkdir(dir, 0777);
-	snprintf(name, sizeof name, "%s", sizes[i].file);
-	bmnext_card_path(path, size, "disks", name);
-	for (k = 2; stat(path, &st) == 0 && k < 100; k++) {
-		const char *dot = strrchr(sizes[i].file, '.');
-		snprintf(name, sizeof name, "%.*s-%d%s", (int) (dot - sizes[i].file),
-		         sizes[i].file, k, dot);
-		bmnext_card_path(path, size, "disks", name);
+	char path[600];
+	if (browse_dir[0] == '\0') {
+		const char *current = bmdos_content();
+		if (current[0] != '\0') {
+			snprintf(browse_dir, sizeof browse_dir, "%s", current);
+			*(char *) base_name(browse_dir) = '\0';
+		} else
+			bmdos_card_path(browse_dir, sizeof browse_dir, "dos", "");
 	}
-	f = fopen(path, "wb");
-	if (f == NULL) {
-		osd_message("Cannot create the disk image on the SD card.", TRUE);
-		return 0;
-	}
-	while (done < total) {
-		size_t chunk = total - done > sizeof zeros ? sizeof zeros : (size_t) (total - done);
-		if (fwrite(zeros, 1, chunk, f) != chunk)
-			break;
-		done += chunk;
-		if ((done & (32u * 1024 * 1024 - 1)) == 0 || done == total) {
-			snprintf(text, sizeof text, "Writing %s: %d%%", name,
-			         (int) (done * 100 / total));
-			osd_message(text, FALSE);
-			bmnext_idle();
-		}
-	}
-	if (fclose(f) != 0 || done < total) {
-		remove(path);
-		osd_message("The SD card is full, or the disk image could not be written.", TRUE);
-		return 0;
-	}
-	printf("BMNeXT: created %s (%s)\n", path, sizes[i].name);
-	return 1;
+	if (!osd_browse("Run a Game or Program", browse_dir, sizeof browse_dir, content_exts,
+	                path, sizeof path))
+		return;
+	bmdos_load_content(path);
+	leave_menu = TRUE;
 }
 
-static void scsi_menu(int target)
+/* ---- DOSBox Pure's settings ---------------------------------------------- */
+
+/* The label of option I's value now, or the value itself. */
+static const char *value_label(int i)
 {
-	enum { T_TYPE, T_INSERT, T_CREATE, T_EJECT, T_PROTECT };
+	static const char *values[RETRO_VALUES], *labels[RETRO_VALUES];
+	const char *now = bmdos_option_get(bmdos_option_key(i));
+	int n = bmdos_option_values(i, values, labels, RETRO_VALUES), k;
+	for (k = 0; k < n; k++)
+		if (now != NULL && strcmp(values[k], now) == 0)
+			return labels[k];
+	return now != NULL ? now : "";
+}
+
+static void choose_value(int i)
+{
+	static const char *values[RETRO_VALUES + 1], *labels[RETRO_VALUES + 1];
+	const char *now = bmdos_option_get(bmdos_option_key(i));
+	int n = bmdos_option_values(i, values, labels, RETRO_VALUES), k, current = 0;
+	for (k = 0; k < n; k++)
+		if (now != NULL && strcmp(values[k], now) == 0)
+			current = k;
+	labels[n] = NULL;
+	k = osd_choose(bmdos_option_desc(i), labels, current);
+	if (k >= 0 && k != current)
+		bmdos_option_set(bmdos_option_key(i), values[k]);
+}
+
+/* The settings of one category (KEY, "" for those in none). */
+static void category_menu(const char *key, const char *title)
+{
+	enum { MAX_ITEMS = 64 };
+	struct osd_item items[MAX_ITEMS];
+	int index[MAX_ITEMS];
 	int sel = 0;
 	for (;;) {
-		SCSIDISK *t = &ConfigureParams.SCSI.target[target];
-		char title[24];
-		struct osd_item items[] = {
-			{"Device", scsi_types[t->nDeviceType % NUM_SD], OSD_ITEM_SUBMENU, T_TYPE},
-			{"Disk", t->bDiskInserted && t->szImageName[0] ? base_name(t->szImageName)
-			                                               : "(empty)", OSD_ITEM_LABEL, -1},
-			{"", NULL, OSD_ITEM_LABEL, -1},
-			{"Insert a Disk Image...", NULL, OSD_ITEM_SUBMENU, T_INSERT},
-			{"Create a Blank Hard Disk...", NULL, OSD_ITEM_SUBMENU, T_CREATE},
-			{"Eject", NULL, 0, T_EJECT},
-			{"Write Protected", NULL, check(t->bWriteProtected), T_PROTECT},
-		};
-		char path[FILENAME_MAX];
-		int chosen, i;
-		snprintf(title, sizeof title, "SCSI Disk %d", target);
-		chosen = osd_menu(title, items, sizeof items / sizeof items[0], &sel);
-		bmnext_settings_begin();
-		switch (chosen) {
-		case T_TYPE:
-			i = osd_choose("Device", scsi_types, t->nDeviceType % NUM_SD);
-			if (i >= 0 && i != (int) t->nDeviceType) {
-				t->nDeviceType = i;
-				if (i == SD_NONE)
-					t->bDiskInserted = false;
-				bmnext_settings_apply(i == SD_HARDDISK || i == SD_NONE);
-			}
-			break;
-		case T_INSERT:
-			if (!browse("Insert a Disk Image", "disks", disk_exts, path, sizeof path))
-				break;
-			snprintf(t->szImageName, sizeof t->szImageName, "%s", path);
-			if (t->nDeviceType == SD_NONE)
-				t->nDeviceType = SD_HARDDISK;
-			t->bDiskInserted = true;
-			/* Previous starts a new NeXT in its ROM monitor (with no disk
-			   a NeXT can wait minutes for one to spin up): a hard disk
-			   in SCSI disk 0 is started from. Machine, Boot changes it. */
-			if (target == 0 && t->nDeviceType == SD_HARDDISK
-			    && ConfigureParams.Boot.nBootDevice == BOOT_ROM)
-				ConfigureParams.Boot.nBootDevice = BOOT_SCSI;
-			bmnext_settings_apply(t->nDeviceType == SD_HARDDISK);
-			break;
-		case T_CREATE:
-			if (!create_blank(hard_disk_sizes, path, sizeof path))
-				break;
-			snprintf(t->szImageName, sizeof t->szImageName, "%s", path);
-			t->nDeviceType = SD_HARDDISK;
-			t->bDiskInserted = true;
-			t->bWriteProtected = false;
-			bmnext_settings_apply(TRUE);
-			break;
-		case T_EJECT:
-			t->bDiskInserted = false;
-			bmnext_settings_apply(t->nDeviceType == SD_HARDDISK);
-			break;
-		case T_PROTECT:
-			t->bWriteProtected = !t->bWriteProtected;
-			bmnext_settings_apply(t->nDeviceType == SD_HARDDISK);
-			break;
-		default:
-			return;
-		}
-		if (osd_closing())
-			return;
-	}
-}
-
-/* An optical (MO) or floppy drive: CONNECTED, INSERTED, PROTECTED and
-   NAME are its settings; BLANKS the blank disks that can be made for it
-   (NULL: none). */
-static void drive_menu(const char *title, bool *connected, bool *inserted, bool *protected_,
-                       char *name, size_t name_size, const struct blank_size *blanks)
-{
-	enum { R_CONNECTED, R_INSERT, R_CREATE, R_EJECT, R_PROTECT };
-	int sel = 0;
-	for (;;) {
-		struct osd_item items[] = {
-			{"Drive Connected", NULL, check(*connected), R_CONNECTED},
-			{"Disk", *inserted && name[0] ? base_name(name) : "(empty)", OSD_ITEM_LABEL, -1},
-			{"", NULL, OSD_ITEM_LABEL, -1},
-			{"Insert a Disk Image...", NULL, OSD_ITEM_SUBMENU, R_INSERT},
-			{"Create a Blank Disk...", NULL, OSD_ITEM_SUBMENU, R_CREATE},
-			{"Eject", NULL, 0, R_EJECT},
-			{"Write Protected", NULL, check(*protected_), R_PROTECT},
-		};
-		char path[FILENAME_MAX];
-		int n_items = sizeof items / sizeof items[0], chosen, k;
-		if (blanks == NULL) {
-			/* No blank disks of this kind (optical disks). */
-			for (k = 4; k < n_items - 1; k++)
-				items[k] = items[k + 1];
-			n_items--;
-		}
-		chosen = osd_menu(title, items, n_items, &sel);
-		bmnext_settings_begin();
-		switch (chosen) {
-		case R_CREATE:
-			if (!create_blank(blanks, path, sizeof path))
-				break;
-			snprintf(name, name_size, "%s", path);
-			*inserted = true;
-			*connected = true;
-			*protected_ = false;
-			bmnext_settings_apply(FALSE);
-			break;
-		case R_CONNECTED:
-			*connected = !*connected;
-			bmnext_settings_apply(TRUE);
-			break;
-		case R_INSERT:
-			if (!browse("Insert a Disk Image", "disks", disk_exts, path, sizeof path))
-				break;
-			snprintf(name, name_size, "%s", path);
-			*inserted = true;
-			*connected = true;
-			bmnext_settings_apply(FALSE);
-			break;
-		case R_EJECT:
-			*inserted = false;
-			bmnext_settings_apply(FALSE);
-			break;
-		case R_PROTECT:
-			*protected_ = !*protected_;
-			bmnext_settings_apply(FALSE);
-			break;
-		default:
-			return;
-		}
-		if (osd_closing())
-			return;
-	}
-}
-
-static const char *drive_value(int connected, int inserted, const char *name)
-{
-	if (!connected)
-		return "(none)";
-	return inserted && name[0] ? base_name(name) : "(empty)";
-}
-
-static void disks_menu(void)
-{
-	enum { D_SCSI = 0, D_MO = 16, D_FLOPPY = 32 };
-	int sel = 0;
-	for (;;) {
-		struct osd_item items[ESP_MAX_DEVS + MO_MAX_DRIVES + 6];
-		char labels[ESP_MAX_DEVS + MO_MAX_DRIVES + 1][24];
 		int n = 0, i, chosen;
-		for (i = 0; i < ESP_MAX_DEVS; i++) {
-			SCSIDISK *t = &ConfigureParams.SCSI.target[i];
-			snprintf(labels[i], sizeof labels[i], "SCSI Disk %d", i);
-			items[n++] = (struct osd_item) {
-				labels[i], t->nDeviceType == SD_NONE ? "(none)"
-				           : drive_value(1, t->bDiskInserted, t->szImageName),
-				OSD_ITEM_SUBMENU, D_SCSI + i};
+		for (i = 0; i < bmdos_options_count() && n < MAX_ITEMS; i++) {
+			if (strcmp(bmdos_option_category(i), key) != 0 || !bmdos_option_visible(i))
+				continue;
+			items[n] = (struct osd_item){bmdos_option_desc(i), value_label(i),
+			                             OSD_ITEM_SUBMENU, n};
+			index[n] = i;
+			n++;
 		}
-		items[n++] = (struct osd_item) {"", NULL, OSD_ITEM_LABEL, -1};
-		for (i = 0; i < MO_MAX_DRIVES; i++) {
-			MODISK *d = &ConfigureParams.MO.drive[i];
-			snprintf(labels[ESP_MAX_DEVS + i], sizeof labels[0], "Optical Drive %d", i);
-			items[n++] = (struct osd_item) {
-				labels[ESP_MAX_DEVS + i],
-				drive_value(d->bDriveConnected, d->bDiskInserted, d->szImageName),
-				OSD_ITEM_SUBMENU, D_MO + i};
-		}
-		items[n++] = (struct osd_item) {
-			"Floppy Drive", drive_value(ConfigureParams.Floppy.drive[0].bDriveConnected,
-			                            ConfigureParams.Floppy.drive[0].bDiskInserted,
-			                            ConfigureParams.Floppy.drive[0].szImageName),
-			OSD_ITEM_SUBMENU, D_FLOPPY};
-		items[n++] = (struct osd_item) {"", NULL, OSD_ITEM_LABEL, -1};
-		items[n++] = (struct osd_item) {"Disk images are in the card's disks folder.", NULL,
-		                                OSD_ITEM_LABEL, -1};
-		chosen = osd_menu("Disks", items, n, &sel);
-		if (chosen >= D_SCSI && chosen < D_SCSI + ESP_MAX_DEVS) {
-			scsi_menu(chosen - D_SCSI);
-		} else if (chosen >= D_MO && chosen < D_MO + MO_MAX_DRIVES) {
-			MODISK *d = &ConfigureParams.MO.drive[chosen - D_MO];
-			drive_menu(labels[ESP_MAX_DEVS + chosen - D_MO], &d->bDriveConnected,
-			           &d->bDiskInserted, &d->bWriteProtected, d->szImageName,
-			           sizeof d->szImageName, NULL);
-		} else if (chosen == D_FLOPPY) {
-			FLPDISK *d = &ConfigureParams.Floppy.drive[0];
-			drive_menu("Floppy Drive", &d->bDriveConnected, &d->bDiskInserted,
-			           &d->bWriteProtected, d->szImageName, sizeof d->szImageName,
-			           floppy_sizes);
-		} else {
+		if (n == 0) {
+			osd_message("No settings here now.", TRUE);
 			return;
 		}
-		if (osd_closing())
+		chosen = osd_menu(title, items, n, &sel);
+		if (chosen < 0 || osd_closing())
 			return;
+		choose_value(index[chosen]);
 	}
 }
 
-/* ---- Machine ------------------------------------------------------------------ */
-
-/* The NeXTs Previous emulates, as its System dialog offers them. */
-static const struct {
-	const char *name;
-	MACHINETYPE type;
-	bool turbo, color;
-} machines[] = {
-	{"NeXT Computer (68030)", NEXT_CUBE030, false, false},
-	{"NeXTcube (68040)", NEXT_CUBE040, false, false},
-	{"NeXTcube Turbo", NEXT_CUBE040, true, false},
-	{"NeXTstation", NEXT_STATION, false, false},
-	{"NeXTstation Turbo", NEXT_STATION, true, false},
-	{"NeXTstation Color", NEXT_STATION, false, true},
-	{"NeXTstation Turbo Color", NEXT_STATION, true, true},
-};
-#define N_MACHINES ((int) (sizeof machines / sizeof machines[0]))
-
-static int machine_index(void)
+static void dosbox_menu(void)
 {
-	int i;
-	for (i = 0; i < N_MACHINES; i++)
-		if (machines[i].type == ConfigureParams.System.nMachineType
-		    && machines[i].turbo == ConfigureParams.System.bTurbo
-		    && machines[i].color == ConfigureParams.System.bColor)
-			return i;
-	return 0;
-}
-
-const char *bmnext_machine_text(void)
-{
-	return machines[machine_index()].name;
-}
-
-static const char *rom_value(void)
-{
-	if (ConfigureParams.System.nMachineType == NEXT_CUBE030)
-		return base_name(ConfigureParams.Rom.szRom030FileName);
-	if (ConfigureParams.System.bTurbo)
-		return base_name(ConfigureParams.Rom.szRomTurboFileName);
-	return base_name(ConfigureParams.Rom.szRom040FileName);
-}
-
-static int memory_mb(void)
-{
-	int i, mb = 0;
-	for (i = 0; i < 4; i++)
-		mb += ConfigureParams.Memory.nMemoryBankSize[i];
-	return mb;
-}
-
-/* ---- Boot -------------------------------------------------------------- */
-
-/* What the NeXT starts from, and its power-on tests: Previous's own Boot
-   dialog's options (dlgBoot.c), which it puts in the NeXT's NVRAM; a
-   change restarts the NeXT (change.c). */
-static void boot_menu(void)
-{
-	enum { B_DEVICE, B_DRAM, B_POT, B_SOUND, B_SCSI, B_LOOP, B_VERBOSE, B_EXTENDED,
-	       B_VISIBLE };
-	static const char *const devices[] = {"ROM Monitor", "SCSI Disk", "Network",
-	                                      "Optical Disk", "Floppy", NULL};
+	enum { MAX_ITEMS = 24 };
+	struct osd_item items[MAX_ITEMS];
 	int sel = 0;
 	for (;;) {
-		CNF_BOOT *b = &ConfigureParams.Boot;
-		struct osd_item items[] = {
-			{"Start From", devices[b->nBootDevice % 5], OSD_ITEM_SUBMENU, B_DEVICE},
-			{"", NULL, OSD_ITEM_LABEL, -1},
-			{"Memory Test", NULL, check(b->bEnableDRAMTest), B_DRAM},
-			{"Power-on Test", NULL, check(b->bEnablePot), B_POT},
-			{"  Sound Out Test", NULL, check(b->bEnableSoundTest), B_SOUND},
-			{"  SCSI Tests", NULL, check(b->bEnableSCSITest), B_SCSI},
-			{"  Loop Until a Key Is Pressed", NULL, check(b->bLoopPot), B_LOOP},
-			{"  Verbose", NULL, check(b->bVerbose), B_VERBOSE},
-			{"Extended Diagnostics", NULL, check(b->bExtendedPot), B_EXTENDED},
-			{"Show the Display During Tests", NULL, check(b->bVisible), B_VISIBLE},
-			{"", NULL, OSD_ITEM_LABEL, -1},
-			{"Changes here restart the NeXT. Its ROM monitor (NeXT>)", NULL, OSD_ITEM_LABEL, -1},
-			{"has more: 'p' sets them, 'b' starts from a device.", NULL, OSD_ITEM_LABEL, -1},
-		};
-		bool *flag = NULL;
-		int chosen = osd_menu("Boot", items, sizeof items / sizeof items[0], &sel), i;
-		bmnext_settings_begin();
-		switch (chosen) {
-		case B_DEVICE:
-			i = osd_choose("Start From", devices, b->nBootDevice % 5);
-			if (i >= 0) {
-				b->nBootDevice = (BOOT_DEVICE) i;
-				bmnext_settings_apply(FALSE);
-			}
-			break;
-		case B_DRAM: flag = &b->bEnableDRAMTest; break;
-		case B_POT: flag = &b->bEnablePot; break;
-		case B_SOUND: flag = &b->bEnableSoundTest; break;
-		case B_SCSI: flag = &b->bEnableSCSITest; break;
-		case B_LOOP: flag = &b->bLoopPot; break;
-		case B_VERBOSE: flag = &b->bVerbose; break;
-		case B_EXTENDED: flag = &b->bExtendedPot; break;
-		case B_VISIBLE: flag = &b->bVisible; break;
-		default:
+		int n = 0, i, chosen, other = 0;
+		for (i = 0; i < bmdos_categories_count() && n < MAX_ITEMS - 4; i++)
+			items[n++] = (struct osd_item){bmdos_category_desc(i), NULL, OSD_ITEM_SUBMENU, i};
+		for (i = 0; i < bmdos_options_count(); i++)
+			if (bmdos_option_category(i)[0] == '\0' && bmdos_option_visible(i))
+				other++;
+		if (other > 0)
+			items[n++] = (struct osd_item){"Other", NULL, OSD_ITEM_SUBMENU, 1000};
+		items[n++] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"Most take effect at once; the rest when the", NULL,
+		                               OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"PC starts again (Restart the PC).", NULL,
+		                               OSD_ITEM_LABEL, -1};
+		if (bmdos_options_count() == 0) {
+			osd_message("DOSBox Pure has not started.", TRUE);
 			return;
 		}
-		if (flag) {
-			*flag = !*flag;
-			bmnext_settings_apply(FALSE);
-		}
-		if (osd_closing())
+		chosen = osd_menu("DOSBox Settings", items, n, &sel);
+		if (chosen < 0 || osd_closing())
 			return;
+		if (chosen == 1000)
+			category_menu("", "Other");
+		else
+			category_menu(bmdos_category_key(chosen), bmdos_category_desc(chosen));
 	}
 }
 
-/* Previous's mouse speed (fLinScale, keymap.c). */
-static const char *const mouse_speeds[] = {"Slowest", "Slow", "Normal", "Fast", "Fastest", NULL};
-static const float mouse_scales[] = {0.5f, 0.75f, 1.0f, 1.5f, 2.0f};
+/* ---- Gamepads ------------------------------------------------------------ */
 
-static int mouse_speed(void)
+static void gamepads_menu(void)
 {
-	int i, best = 2;
-	for (i = 0; i < 5; i++)
-		if (fabsf(mouse_scales[i] - ConfigureParams.Mouse.fLinScale)
-		    < fabsf(mouse_scales[best] - ConfigureParams.Mouse.fLinScale))
-			best = i;
-	return best;
-}
-
-static void machine_menu(void)
-{
-	enum { S_MACHINE, S_ROM, S_RAM, S_BOOT, S_DIMENSION, S_ETHERNET, S_REALTIME, S_SWAP,
-	       S_MOUSE };
-	int sel = 0;
+	static const char *names[16];
+	int sel = 0, n = bmdos_pad_types(), i;
+	for (i = 0; i < n && i < 15; i++)
+		names[i] = bmdos_pad_type_name(i);
+	names[i] = NULL;
 	for (;;) {
-		char ram[16];
 		struct osd_item items[] = {
-			{"Machine", machines[machine_index()].name, OSD_ITEM_SUBMENU, S_MACHINE},
-			{"ROM", rom_value(), OSD_ITEM_SUBMENU, S_ROM},
-			{"Memory", (snprintf(ram, sizeof ram, "%d MB", memory_mb()), ram),
-			 OSD_ITEM_SUBMENU, S_RAM},
-			{"Boot", NULL, OSD_ITEM_SUBMENU, S_BOOT},
-			{"NeXTdimension Board (NeXTcubes)", NULL,
-			 check(ConfigureParams.Dimension.board[0].bEnabled), S_DIMENSION},
-			{"Ethernet Connected (the NeXT's network)", NULL,
-			 check(ConfigureParams.Ethernet.bEthernetConnected), S_ETHERNET},
-			{"Variable Speed (real time clock)", NULL,
-			 check(ConfigureParams.System.bRealtime), S_REALTIME},
-			{"Swap Command and Alt", NULL, check(ConfigureParams.Keyboard.bSwapCmdAlt),
-			 S_SWAP},
-			{"Mouse Speed", mouse_speeds[mouse_speed()], OSD_ITEM_SUBMENU, S_MOUSE},
+			{"Gamepad 1", bmdos_pad_type_name(bmdos_pad_type(0)), OSD_ITEM_SUBMENU, 0},
+			{"Gamepad 2", bmdos_pad_type_name(bmdos_pad_type(1)), OSD_ITEM_SUBMENU, 1},
 			{"", NULL, OSD_ITEM_LABEL, -1},
-			{"Machine, ROM and Memory restart the NeXT. The 68040s", NULL, OSD_ITEM_LABEL, -1},
-			{"need ROM 2.x, the Turbos ROM 3.x (in the roms folder).", NULL, OSD_ITEM_LABEL, -1},
+			{"Auto: the game's own mapping where", NULL, OSD_ITEM_LABEL, -1},
+			{"DOSBox Pure knows the game, else keys;", NULL, OSD_ITEM_LABEL, -1},
+			{"change it in its Controller Mapper", NULL, OSD_ITEM_LABEL, -1},
+			{"(its start menu's right side). A game", NULL, OSD_ITEM_LABEL, -1},
+			{"that wants a joystick: PC Joystick 1.", NULL, OSD_ITEM_LABEL, -1},
 		};
-		const char *names[N_MACHINES + 1];
-		char path[FILENAME_MAX];
-		int chosen, i, n_items = sizeof items / sizeof items[0];
-		if (!BMNEXT_HAS_DIMENSION) {
-			/* The NeXTdimension is for the Pi 5. */
-			for (i = 0; i < n_items && items[i].id != S_DIMENSION; i++)
-				;
-			for (; i < n_items - 1; i++)
-				items[i] = items[i + 1];
-			n_items--;
-		}
-		chosen = osd_menu("Machine", items, n_items, &sel);
-		bmnext_settings_begin();
-		switch (chosen) {
-		case S_MACHINE:
-			for (i = 0; i < N_MACHINES; i++)
-				names[i] = machines[i].name;
-			names[N_MACHINES] = NULL;
-			i = osd_choose("Machine", names, machine_index());
-			if (i >= 0 && i != machine_index()) {
-				ConfigureParams.System.nMachineType = machines[i].type;
-				ConfigureParams.System.bTurbo = machines[i].turbo;
-				ConfigureParams.System.bColor = machines[i].color;
-				Configuration_SetSystemDefaults();
-				bmnext_find_roms();
-				bmnext_settings_apply(TRUE);
-			}
-			break;
-		case S_ROM: {
-			char *rom = ConfigureParams.System.nMachineType == NEXT_CUBE030
-			            ? ConfigureParams.Rom.szRom030FileName
-			            : ConfigureParams.System.bTurbo ? ConfigureParams.Rom.szRomTurboFileName
-			                                            : ConfigureParams.Rom.szRom040FileName;
-			static const char *const rom_exts[] = {"bin", "rom", NULL};
-			if (!browse("Choose the ROM", "roms", rom_exts, path, sizeof path))
-				break;
-			snprintf(rom, FILENAME_MAX, "%s", path);
-			bmnext_settings_apply(TRUE);
-			break;
-		}
-		case S_RAM: {
-			static const char *const sizes[] = {"8 MB", "16 MB", "32 MB", "64 MB", "128 MB", NULL};
-			static const int banks[][4] = {
-				{4, 4, 0, 0}, {4, 4, 4, 4}, {16, 16, 0, 0}, {16, 16, 16, 16}, {32, 32, 32, 32}
-			};
-			int mb = memory_mb(), current = mb >= 128 ? 4 : mb >= 64 ? 3 : mb >= 32 ? 2
-			                               : mb >= 16 ? 1 : 0;
-			i = osd_choose("Memory", sizes, current);
-			if (i >= 0) {
-				memcpy(ConfigureParams.Memory.nMemoryBankSize, banks[i], sizeof banks[i]);
-				bmnext_settings_apply(TRUE);
-			}
-			break;
-		}
-		case S_REALTIME:
-			ConfigureParams.System.bRealtime = !ConfigureParams.System.bRealtime;
-			bmnext_settings_apply(FALSE);
-			break;
-		case S_SWAP:
-			ConfigureParams.Keyboard.bSwapCmdAlt = !ConfigureParams.Keyboard.bSwapCmdAlt;
-			bmnext_settings_apply(FALSE);
-			break;
-		case S_BOOT:
-			boot_menu();
-			break;
-		case S_DIMENSION: {
-			/* The NeXTcube's 32-bit colour board, in slot 2: its i860
-			   runs on the emulator's core, and Video > Screen chooses
-			   which screen is shown. */
-			NDBOARD *board = &ConfigureParams.Dimension.board[0];
-			if (!board->bEnabled) {
-				if (ConfigureParams.System.nMachineType == NEXT_STATION) {
-					osd_message("Only a NeXTcube has slots for a NeXTdimension board.", TRUE);
-					break;
-				}
-				if (!bmnext_dimension_rom_found()) {
-					osd_message("No NeXTdimension ROM in the roms folder "
-					            "(see roms/README.txt).", TRUE);
-					break;
-				}
-			}
-			board->bEnabled = !board->bEnabled;
-			bmnext_find_roms();
-			bmnext_settings_apply(TRUE);
-			break;
-		}
-		case S_ETHERNET:
-			/* The NeXT on a network of its own, through SLiRP: it reaches
-			   what the Pi does (Network, below in the main menu). */
-			ConfigureParams.Ethernet.bEthernetConnected =
-				!ConfigureParams.Ethernet.bEthernetConnected;
-			bmnext_settings_apply(FALSE);
-			break;
-		case S_MOUSE:
-			i = osd_choose("Mouse Speed", mouse_speeds, mouse_speed());
-			if (i >= 0) {
-				ConfigureParams.Mouse.fLinScale = mouse_scales[i];
-				bmnext_settings_apply(FALSE);
-			}
-			break;
-		default:
+		int chosen = osd_menu("Gamepads", items, sizeof items / sizeof items[0], &sel);
+		if (chosen < 0 || osd_closing())
 			return;
-		}
-		if (osd_closing())
-			return;
+		i = osd_choose(chosen == 0 ? "Gamepad 1" : "Gamepad 2", names, bmdos_pad_type(chosen));
+		if (i >= 0)
+			bmdos_set_pad_type(chosen, i);
 	}
 }
 
@@ -677,15 +269,12 @@ static void choose_screen_size(void)
 		return;
 	snprintf(text, sizeof text, "%d.%02d", sizes[i] / 100, sizes[i] % 100);
 	save_setting("scale", text);
-	bmnext_video_settings_changed();
+	bmdos_video_settings_changed();
 }
 
 static void video_menu(void)
 {
-	enum { V_SIZE, V_RESOLUTION, V_SHADER, V_CURVATURE, V_SMOOTH,
-	       V_ACTIVITY, V_SCREEN };
-	static const char *const screens[] = {"Auto", "NeXT", "NeXTdimension", NULL};
-	static const char *const screen_settings[] = {"auto", "next", "dimension"};
+	enum { V_SIZE, V_RESOLUTION, V_SHADER, V_CURVATURE, V_SMOOTH };
 	/* The Pi 5 only: its firmware ignores hdmi_mode (from BMA800XL). */
 	static const char *const resolutions[] = {"auto", "1920x1080", "1280x720", NULL};
 	static const char *const resolution_names[] = {"Auto", "1920x1080", "1280x720", NULL};
@@ -704,11 +293,10 @@ static void video_menu(void)
 			{"CRT Effect (reboot)", NULL, check(setting_on("crt_shader", FALSE)), V_SHADER},
 			{"CRT Curvature (reboot)", NULL, check(setting_on("crt_curvature", FALSE)), V_CURVATURE},
 			{"Smooth Scaling (reboot)", NULL, check(setting_on("smooth", FALSE)), V_SMOOTH},
-			{"Show Disk Activity", NULL, check(bmnext_disk_activity()), V_ACTIVITY},
-			{"Screen", screens[bmnext_screen()], OSD_ITEM_SUBMENU, V_SCREEN},
 			{"", NULL, OSD_ITEM_LABEL, -1},
 			{"If your TV cuts off the edges, make", NULL, OSD_ITEM_LABEL, -1},
-			{"the Screen Size smaller.", NULL, OSD_ITEM_LABEL, -1},
+			{"the Screen Size smaller. The PC's own", NULL, OSD_ITEM_LABEL, -1},
+			{"video settings are in DOSBox Settings.", NULL, OSD_ITEM_LABEL, -1},
 		};
 		int chosen, i;
 		n_items = sizeof(items) / sizeof(items[0]);
@@ -718,36 +306,16 @@ static void video_menu(void)
 				items[k] = items[k + 1];
 			n_items--;
 		}
-		if (!ConfigureParams.Dimension.board[0].bEnabled) {
-			/* Screen is for a NeXTcube with a NeXTdimension board. */
-			for (k = 0; k < n_items && items[k].id != V_SCREEN; k++)
-				;
-			for (; k < n_items - 1; k++)
-				items[k] = items[k + 1];
-			n_items--;
-		}
 		chosen = osd_menu("Video", items, n_items, &sel);
 		switch (chosen) {
 		case V_SIZE:
 			choose_screen_size();
 			break;
-		case V_ACTIVITY:
-			save_setting("disk_activity", bmnext_disk_activity() ? "0" : "1");
-			bmnext_set_disk_activity(!bmnext_disk_activity());
-			break;
-		case V_SCREEN:
-			/* Auto: the board's whenever NeXTSTEP has its video on. */
-			i = osd_choose("Screen", screens, bmnext_screen());
-			if (i >= 0) {
-				save_setting("nd_screen", screen_settings[i]);
-				bmnext_set_screen(i);
-			}
-			break;
 		case V_RESOLUTION:
 			i = osd_choose("Resolution", resolution_names, res_index);
 			if (i >= 0 && i != res_index) {
 				save_setting("resolution", resolutions[i]);
-				bmnext_display_mode_changed();
+				bmdos_display_mode_changed();
 			}
 			break;
 		case V_CURVATURE:
@@ -772,7 +340,7 @@ static void video_menu(void)
 
 static void sound_menu(void)
 {
-	enum { S_VOLUME, S_OUTPUT, S_TONE, S_TONE_NEXT };
+	enum { S_VOLUME, S_OUTPUT };
 	static const char *const volumes[] = {
 		"100%", "90%", "80%", "70%", "60%", "50%", "40%", "30%", "20%", "10%", "Off", NULL
 	};
@@ -787,23 +355,20 @@ static void sound_menu(void)
 		struct osd_item items[] = {
 			{"Volume", volume, OSD_ITEM_SUBMENU, S_VOLUME},
 			{"Output (reboot)", output_names[out_index], OSD_ITEM_SUBMENU, S_OUTPUT},
-			{"Test Tone (440 Hz)", NULL, 0, S_TONE},
-			{"Test Tone (NeXT's Way)", NULL, 0, S_TONE_NEXT},
+			{"", NULL, OSD_ITEM_LABEL, -1},
+			{"The PC's sound cards are in DOSBox", NULL, OSD_ITEM_LABEL, -1},
+			{"Settings, Audio.", NULL, OSD_ITEM_LABEL, -1},
 		};
 		int chosen, i;
-		if (bmnext_volume() == 0)
+		if (bmdos_volume() == 0)
 			snprintf(volume, sizeof volume, "Off");
 		else
-			snprintf(volume, sizeof volume, "%d%%", bmnext_volume());
+			snprintf(volume, sizeof volume, "%d%%", bmdos_volume());
 		chosen = osd_menu("Sound", items, sizeof(items) / sizeof(items[0]), &sel);
 		if (chosen == S_VOLUME) {
-			i = osd_choose("Volume", volumes, (100 - bmnext_volume() + 5) / 10);
+			i = osd_choose("Volume", volumes, (100 - bmdos_volume() + 5) / 10);
 			if (i >= 0)
-				bmnext_set_volume(100 - i * 10);
-			continue;
-		}
-		if (chosen == S_TONE || chosen == S_TONE_NEXT) {
-			bmnext_test_tone(chosen == S_TONE_NEXT);
+				bmdos_set_volume(100 - i * 10);
 			continue;
 		}
 		if (chosen != S_OUTPUT)
@@ -822,9 +387,7 @@ static char wifi_ssid[33], wifi_psk[64], wifi_country[3];
 
 static void wpa_path(char *path, size_t size)
 {
-	const char *root = bmnext_sd_root();
-	size_t len = strlen(root);
-	snprintf(path, size, "%s%s%s", root, len > 0 && root[len - 1] == '/' ? "" : "/", WPA_CONFIG);
+	bmdos_card_path(path, (unsigned) size, "", WPA_CONFIG);
 }
 
 static void copy_quoted(char *dst, size_t size, const char *src)
@@ -1049,26 +612,24 @@ static void network_menu(void)
 
 static void about(void)
 {
-	char text[1800], status[64];
+	char text[1800], status[64], speed[160];
 	int w, h;
 	host_display_size(&w, &h);
 	host_network_status(status, sizeof(status));
+	bmdos_status_text(speed, sizeof speed);
 	snprintf(text, sizeof(text),
-	         "BMNeXT " BMNEXT_VERSION "\n"
-	         "Bare metal NeXT Computer, NeXTcube and NeXTstation\n"
-	         "emulator for the Raspberry Pi 4 and 5.\n\n"
-	         "Emulation: " PROG_NAME " (GPL 2 or later), by Andreas\n"
-	         "Grabher, Simon Schubiger and Gilles Fetis, from Hatari.\n"
-	         "ROM and NeXTSTEP: your own.\n"
-	         "Based on BMAtariST, BMApple2, BMCoco, BMA800XL and BMC64.\n\n"
-	         "Machine: %s\n"
-	         "ROM: %s\n"
-	         "Speed: %d%% of the real machine's\n"
+	         "BMDOS " BMDOS_VERSION "\n"
+	         "Bare metal MS-DOS PC emulator for the Raspberry Pi.\n\n"
+	         "Emulation: DOSBox Pure " DOSBOX_PURE_VERSION " (GPL 2 or later),\n"
+	         "by Bernhard Schelling, from DOSBox by the DOSBox Team.\n"
+	         "Based on BMNeXT, BMAmiga, BMCoco, BMA800XL and BMC64.\n\n"
+	         "Running: %s\n"
+	         "%s\n"
 	         "Display: %dx%d %.2f Hz\n"
 	         "Network: %s",
-	         bmnext_machine_text(), rom_value(), bmnext_speed_percent(), w, h,
-	         bmnext_refresh_rate(), status);
-	osd_info("About BMNeXT", text);
+	         bmdos_content()[0] ? base_name(bmdos_content()) : "nothing (DOSBox Pure's menu)",
+	         speed, w, h, bmdos_refresh_rate(), status);
+	osd_info("About BMDOS", text);
 }
 
 static void offer_reboot(void)
@@ -1079,22 +640,27 @@ static void offer_reboot(void)
 
 /* ---- Main menu ---------------------------------------------------------------- */
 
-void bmnext_menu(void)
+void bmdos_menu(void)
 {
-	enum { M_DISKS, M_RESTART, M_MACHINE, M_VIDEO, M_SOUND, M_NETWORK, M_ABOUT,
+	enum { M_RUN, M_EJECT, M_RESTART, M_COREMENU, M_DOSBOX, M_PADS, M_VIDEO, M_SOUND, M_NETWORK, M_ABOUT,
 	       M_REBOOT, M_OFF };
 	static int sel = 0;
-	char title[48], speed[48];
+	char title[48], running[OSD_COLS + 1];
 
-	snprintf(title, sizeof(title), "BMNeXT %s", BMNEXT_VERSION);
+	snprintf(title, sizeof(title), "BMDOS %s", BMDOS_VERSION);
 	reboot_needed = FALSE;
+	leave_menu = FALSE;
 	osd_open();
 	for (;;) {
+		const char *now = bmdos_content();
 		struct osd_item items[] = {
-			{"Disks", NULL, OSD_ITEM_SUBMENU, M_DISKS},
-			{"Restart (switch the NeXT off and on)", NULL, 0, M_RESTART},
+			{"Run a Game or Program", NULL, OSD_ITEM_SUBMENU, M_RUN},
+			{"Run Nothing (DOSBox Pure's Menu)", NULL, 0, M_EJECT},
+			{"Restart the PC", NULL, 0, M_RESTART},
+			{"DOSBox Pure's Menu and Keyboard", NULL, 0, M_COREMENU},
 			{"", NULL, OSD_ITEM_LABEL, -1},
-			{"Machine", bmnext_machine_text(), OSD_ITEM_SUBMENU, M_MACHINE},
+			{"DOSBox Settings", NULL, OSD_ITEM_SUBMENU, M_DOSBOX},
+			{"Gamepads", NULL, OSD_ITEM_SUBMENU, M_PADS},
 			{"Video", NULL, OSD_ITEM_SUBMENU, M_VIDEO},
 			{"Sound", NULL, OSD_ITEM_SUBMENU, M_SOUND},
 			{"Network", NULL, OSD_ITEM_SUBMENU, M_NETWORK},
@@ -1103,23 +669,35 @@ void bmnext_menu(void)
 			{"Reboot", NULL, 0, M_REBOOT},
 			{"Shut Down", NULL, 0, M_OFF},
 			{"", NULL, OSD_ITEM_LABEL, -1},
-			{speed, NULL, OSD_ITEM_LABEL, -1},
+			{running, NULL, OSD_ITEM_LABEL, -1},
 		};
-		int chosen, leave = FALSE;
-		snprintf(speed, sizeof speed, "Running at %d%% of the real machine's speed.",
-		         bmnext_speed_percent());
+		int chosen;
+		snprintf(running, sizeof running, "Running: %s",
+		         now[0] ? base_name(now) : "nothing");
 		chosen = osd_menu(title, items, sizeof(items) / sizeof(items[0]), &sel);
 
 		switch (chosen) {
-		case M_DISKS: disks_menu(); break;
-		case M_RESTART: bmnext_cold_reset(); leave = TRUE; break;
-		case M_MACHINE: machine_menu(); break;
+		case M_RUN: choose_content(); break;
+		case M_EJECT:
+			bmdos_load_content("");
+			leave_menu = TRUE;
+			break;
+		case M_RESTART:
+			bmdos_restart();
+			leave_menu = TRUE;
+			break;
+		case M_COREMENU:
+			bmdos_open_core_menu();
+			leave_menu = TRUE;
+			break;
+		case M_DOSBOX: dosbox_menu(); break;
+		case M_PADS: gamepads_menu(); break;
 		case M_VIDEO: video_menu(); break;
 		case M_SOUND: sound_menu(); break;
 		case M_NETWORK: network_menu(); break;
 		case M_ABOUT: about(); break;
 		case M_REBOOT:
-			if (osd_confirm("Reboot", "Reboot BMNeXT?"))
+			if (osd_confirm("Reboot", "Reboot BMDOS?"))
 				power(0);
 			break;
 		case M_OFF:
@@ -1127,10 +705,10 @@ void bmnext_menu(void)
 				power(1);
 			break;
 		default:
-			leave = TRUE;
+			leave_menu = TRUE;
 			break;
 		}
-		if (leave || osd_closing() || bmnext_pending_requests())
+		if (leave_menu || osd_closing() || bmdos_pending_requests())
 			break;
 	}
 	if (reboot_needed && !osd_closing())

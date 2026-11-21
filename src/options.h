@@ -2,22 +2,22 @@
 // options.h
 //
 // Reads key=value options from cmdline.txt on the SD card, and from
-// bmnext.cfg, where the BMNeXT menu saves its settings. A setting in
-// bmnext.cfg wins over the same option in cmdline.txt.
+// bmdos.cfg, where the BMDOS menu saves its settings. A setting in
+// bmdos.cfg wins over the same option in cmdline.txt.
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_OPTIONS_H_
-#define BMNEXT_OPTIONS_H_
+#ifndef BMDOS_OPTIONS_H_
+#define BMDOS_OPTIONS_H_
 
 #include <circle/bcmpropertytags.h>
 
 #define OPTIONS_MAX 32
-#define SETTINGS_MAX 48
-#define SETTING_NAME_MAX 24
-#define SETTING_VALUE_MAX 72
+#define SETTINGS_MAX 128
+#define SETTING_NAME_MAX 48
+#define SETTING_VALUE_MAX 520
 
 class Options {
 public:

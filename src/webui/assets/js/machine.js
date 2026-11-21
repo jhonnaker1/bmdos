@@ -1,4 +1,4 @@
-// The machine BMNeXT is running and what the web UI can do on it, from the
+// The machine BMDOS is running and what the web UI can do on it, from the
 // "machine" and "caps" of /api/status (webui_machine.cpp on the device).
 
 import * as api from "./api.js";
@@ -25,7 +25,7 @@ export async function loadMachine() {
   }
 }
 
-// Machine name, e.g. "NeXTstation Turbo".
+// Machine name, e.g. "DOSBox Pure: game.zip".
 export const machineName = () => current.name;
 
 // The part before any comma (the whole name, for the ST).
@@ -34,7 +34,7 @@ export const machineShortName = () => current.name.split(",")[0] || "machine";
 // Name for display.
 export const machineDisplayName = () => current.name || "machine";
 
-// The emulator's settings file, "/previous.cfg".
+// The emulator's settings file, "/bmdos.cfg".
 export const mainSettingsFile = () => current.settings;
 
 // Whether Autostart accepts files with this extension.

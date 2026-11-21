@@ -4,7 +4,7 @@
 // See hdmisound.h: Circle's HDMI sound driver (R. Stange, GPL 3), for
 // either HDMI port of the Pi 4 or 5.
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 

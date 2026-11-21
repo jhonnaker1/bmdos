@@ -1,12 +1,11 @@
 /*
- * osd.c - BMNeXT's on-screen display: menus, file browser, text entry.
+ * osd.c - BMDOS's on-screen display: menus, file browser, text entry.
  *
- * From BMCoco, BMApple2 and BMAtariST. Text is drawn with Previous's own
- * settings dialog font (gui-sdl/font10x16.h, Hatari's, with the Atari ST's
- * character set), each character 10x16 pixels in a 640x460 area: 64
- * columns by 28 rows, black on white.
+ * From BMCoco, BMApple2, BMAtariST and BMNeXT. Text is drawn with the IBM
+ * VGA's 8x16 font (DOSBox's video BIOS's), each character in a 10x16 cell
+ * of a 640x460 area: 64 columns by 28 rows, light grey on blue.
  *
- * This file is part of BMNeXT, a bare metal NeXT emulator for
+ * This file is part of BMDOS, a bare metal MS-DOS PC emulator for
  * the Raspberry Pi. See LICENSE for licensing details.
  */
 
@@ -19,7 +18,7 @@
 #include <sys/stat.h>
 
 #include "../host.h"
-#include "bmnext.h"
+#include "bmdos.h"
 #include "osd.h"
 
 #define OSD_W 640
@@ -27,17 +26,19 @@
 #define CELL_W 10
 #define CELL_H 16
 
-/* Previous's 10x16 font: an X bitmap, 16 characters across and 16 down,
-   the leftmost pixel of each byte in bit 0. */
-typedef uint8_t Uint8;
-#include "gui-sdl/font10x16.h"
+/* The IBM VGA's 8x16 font, as DOSBox's video BIOS has it
+   (src/ints/int10_memory.cpp): 256 characters of 16 rows, the leftmost
+   pixel in bit 7. Each is drawn in a 10 pixel wide cell, with a column of
+   the background on each side (the VGA's 9th column, doubled). */
+extern unsigned char int10_font_16[256 * 16];
 
-/* RGB565 colours: GEM's black on white, the selection inverted. The names
-   are what each colour is used for. */
-#define C_BLACK   0xffff  /* the background */
-#define C_GREEN   0x0000  /* text */
-#define C_DKGREEN 0x7bef  /* grey: labels and hints */
-#define C_ORANGE  0x0000  /* the selection's bar (its text is C_BLACK) */
+/* RGB565 colours: a DOS setup program's light grey on blue, the title
+   and the selection's bar in grey and cyan. The names are what each colour
+   is used for (they were green on black once, in BMCoco). */
+#define C_BLACK   0x0015  /* the background: VGA blue */
+#define C_GREEN   0xad55  /* text: VGA light grey */
+#define C_DKGREEN 0x57ff  /* light cyan: labels and hints */
+#define C_ORANGE  0x0555  /* the selection's bar, VGA cyan (its text is C_BLACK) */
 #define C_RED     0xf800
 #define C_DKRED   0x7800  /* the disk light, off */
 
@@ -53,7 +54,7 @@ static void flush_input(void);
 
 static uint16_t *osd_fb(int *pitch)
 {
-	return bmnext_framebuffer(pitch);
+	return bmdos_framebuffer(pitch);
 }
 
 /* An RGB565 colour as a 32-bit pixel (0x00RRGGBB). */
@@ -72,21 +73,19 @@ static void put_pixel(void *fb, int pitch, int bits, int x, int y, uint16_t c)
 		((uint16_t *) fb)[(size_t) y * pitch + x] = c;
 }
 
-/* A glyph from Previous's font. */
+/* A glyph from the VGA font (code page 437). */
 static void draw_char_at(void *fb, int pitch, int bits, int x, int y, unsigned char c,
                          uint16_t fg, uint16_t bg)
 {
-	int row, col, gx, gy;
-	if (c >= 0x80 || c < 0x20)
+	int row, col;
+	if (c < 0x20)
 		c = '?';
-	gx = (c % 16) * CELL_W;
-	gy = (c / 16) * CELL_H;
 	for (row = 0; row < CELL_H; row++) {
-		const uint8_t *line = font10x16_bits + (gy + row) * (font10x16_width / 8);
+		unsigned line = int10_font_16[c * 16 + row];
 		for (col = 0; col < CELL_W; col++) {
-			int bit = gx + col;
+			int bit = col - 1;   /* columns 1 to 8 are the glyph's */
 			put_pixel(fb, pitch, bits, x + col, y + row,
-			          (line[bit >> 3] & (1 << (bit & 7))) ? fg : bg);
+			          (bit >= 0 && bit < 8 && (line & (0x80 >> bit))) ? fg : bg);
 		}
 	}
 }
@@ -159,7 +158,7 @@ void osd_open(void)
 	closing = FALSE;
 	flush_input();
 	clear_screen();
-	bmnext_osd_view(TRUE);
+	bmdos_osd_view(TRUE);
 }
 
 void osd_close(void)
@@ -170,7 +169,7 @@ void osd_close(void)
 	closing = FALSE;
 	flush_input();
 	clear_screen();
-	bmnext_osd_view(FALSE);
+	bmdos_osd_view(FALSE);
 }
 
 int osd_is_open(void)
@@ -332,7 +331,7 @@ static int poll_input(int pads)
 	int usage, pressed, key;
 	double now = host_time();
 
-	if (bmnext_pending_requests()) {
+	if (bmdos_pending_requests()) {
 		closing = TRUE;
 		return OSD_KEY_MENU;
 	}
@@ -344,7 +343,7 @@ static int poll_input(int pads)
 		}
 		if (usage == USAGE_POWER) {
 			/* Shut Down, as during play (platform.c). */
-			bmnext_request_power(1);
+			bmdos_request_power(1);
 			closing = TRUE;
 			return OSD_KEY_MENU;
 		}
@@ -391,7 +390,7 @@ int osd_poll_key(int pads)
 	key = poll_input(pads);
 	if (key == OSD_KEY_NONE) {
 		/* Waits for the next display refresh. */
-		bmnext_idle();
+		bmdos_idle();
 		host_video_present(TRUE);
 		if (!pads)
 			flush_pads();
@@ -633,7 +632,7 @@ void osd_message(const char *text, int wait)
 	int was_open = is_open;
 	if (!was_open)
 		osd_open();
-	draw_frame("BMNeXT", wait ? "Press any key" : NULL);
+	draw_frame("BMDOS", wait ? "Press any key" : NULL);
 	draw_wrapped(5, OSD_ROWS - 7, text, C_GREEN);
 	if (wait) {
 		osd_read_key();
@@ -754,7 +753,7 @@ static int any_usb_stick(void)
 static int drive_root(const char *dir)
 {
 	int n;
-	if (same_dir(dir, bmnext_sd_root()) || same_dir(dir, "/") || same_dir(dir, "SD:/"))
+	if (same_dir(dir, bmdos_sd_root()) || same_dir(dir, "/") || same_dir(dir, "SD:/"))
 		return TRUE;
 	for (n = 0; n < HOST_USB_STICKS; n++)
 		if (same_dir(dir, host_usb_root(n)))
@@ -790,7 +789,7 @@ static int choose_drive(const char *title, char *dir, size_t dir_size)
 	chosen = osd_menu(title, items, count, &sel);
 	if (chosen == -1)
 		return FALSE;
-	snprintf(dir, dir_size, "%s", chosen >= 0 ? host_usb_root(chosen) : bmnext_sd_root());
+	snprintf(dir, dir_size, "%s", chosen >= 0 ? host_usb_root(chosen) : bmdos_sd_root());
 	return TRUE;
 }
 
@@ -861,7 +860,7 @@ static int browse(const char *title, char *dir, size_t dir_size,
 
 		if (strcmp(dir, DRIVES_PAGE) == 0) {
 			if (!choose_drive(title, dir, dir_size)) {
-				snprintf(dir, dir_size, "%s", bmnext_sd_root());
+				snprintf(dir, dir_size, "%s", bmdos_sd_root());
 				return 0;
 			}
 			came_from[0] = '\0';
@@ -869,10 +868,10 @@ static int browse(const char *title, char *dir, size_t dir_size,
 		}
 		n = read_dir(dir, exts, &list);
 		if (n < 0) {
-			if (!same_dir(dir, bmnext_sd_root())) {
+			if (!same_dir(dir, bmdos_sd_root())) {
 				/* Gone (the card changed, or the stick was pulled out):
 				   start again at the top of the card. */
-				snprintf(dir, dir_size, "%s", bmnext_sd_root());
+				snprintf(dir, dir_size, "%s", bmdos_sd_root());
 				continue;
 			}
 			osd_message("Cannot read the SD card.", TRUE);

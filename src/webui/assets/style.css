@@ -1,55 +1,66 @@
-/* A NeXT theme: NeXTSTEP's four greys (black, dark grey, light grey,
-   white), its bevelled light grey buttons for what is chosen, a window's
-   black title bar for the name, and a colour bar in the spirit of the cube
-   logo's coloured lettering. The colour names are the ones the page has
-   always used (the JS and HTML refer to them); they no longer describe the
+/* A DOS theme: the VGA's sixteen colours, a DOS setup program's light
+   grey on blue for the name (in a box drawn with the IBM PC's double
+   lines), its cyan for what is chosen, and a colour bar of CGA's cyan,
+   magenta and white. The colour names are the ones the page has always
+   used (the JS and HTML refer to them); they no longer describe the
    colours. */
 :root {
   color-scheme: dark;
-  --bg: #0b0b0c;
-  --bg-2: #111113;
-  --panel: #1a1a1c;
-  --panel-2: #222225;
-  --border: #3a3a3e;
-  --border-soft: #26262a;
-  --fg: #ececec;
-  --muted: #b0b0b4;
-  --dim: #77777c;
-  --cream: #f4f4f4;
-  --key: #1c1c1e;
-  --key-hi: #2a2a2d;
-  --key-edge: #050505;
-  /* NeXTSTEP's greys, and the colour bar's colours */
-  --nx-white: #ffffff;
-  --nx-light: #aaaaaa;
+  --bg: #05051a;
+  --bg-2: #0a0a24;
+  --panel: #0e0e30;
+  --panel-2: #15153c;
+  --border: #2e2e6e;
+  --border-soft: #1c1c4a;
+  --fg: #e8e8f0;
+  --muted: #aaaaaa;
+  --dim: #7070a0;
+  --cream: #ffffff;
+  --key: #12123a;
+  --key-hi: #1c1c50;
+  --key-edge: #02020c;
+  /* The VGA's text colours */
+  --vga-blue: #0000aa;
+  --vga-cyan: #00aaaa;
+  --vga-light-cyan: #55ffff;
+  --vga-magenta: #aa00aa;
+  --vga-light-magenta: #ff55ff;
+  --vga-grey: #aaaaaa;
+  --vga-white: #ffffff;
+  --vga-yellow: #ffff55;
+  --vga-green: #55ff55;
+  --vga-red: #ff5555;
+  /* The names the rules below use (from BMNeXT's theme), as VGA colours */
+  --nx-white: var(--vga-white);
+  --nx-light: var(--vga-grey);
   --nx-dark: #555555;
   --nx-black: #000000;
-  --nx-green: #3cbf4e;
-  --nx-yellow: #f2c81c;
-  --nx-red: #e5383b;
-  --nx-magenta: #d6338f;
-  --gold: #d2d2d4;
-  --gold-hi: #f4f4f4;
-  --gold-lo: #8e8e92;
-  --orange: var(--nx-red);
-  --rust: #b8282b;
-  --blue: #c8c8cc;
-  --cyan: var(--nx-light);
-  --purple: var(--nx-magenta);
-  --pink: var(--nx-magenta);
-  --green: var(--nx-green);
-  --amber: var(--nx-yellow);
-  --red: var(--nx-red);
-  --stripe-1: var(--nx-green);
-  --stripe-2: var(--nx-yellow);
-  --stripe-3: var(--nx-red);
-  --stripe-4: var(--nx-magenta);
+  --nx-green: var(--vga-green);
+  --nx-yellow: var(--vga-yellow);
+  --nx-red: var(--vga-red);
+  --nx-magenta: var(--vga-light-magenta);
+  --gold: #aaaaaa;
+  --gold-hi: #55ffff;
+  --gold-lo: #00aaaa;
+  --orange: var(--vga-light-magenta);
+  --rust: var(--vga-magenta);
+  --blue: var(--vga-light-cyan);
+  --cyan: var(--vga-cyan);
+  --purple: var(--vga-magenta);
+  --pink: var(--vga-light-magenta);
+  --green: var(--vga-green);
+  --amber: var(--vga-yellow);
+  --red: var(--vga-red);
+  --stripe-1: var(--vga-light-cyan);
+  --stripe-2: var(--vga-light-magenta);
+  --stripe-3: var(--vga-white);
+  --stripe-4: var(--vga-cyan);
   --colour-bar: linear-gradient(90deg,
-    var(--nx-green) 0 25%, var(--nx-yellow) 25% 50%,
-    var(--nx-red) 50% 75%, var(--nx-magenta) 75% 100%);
-  /* A NeXTSTEP button: light grey, lit from the top left */
-  --grad: linear-gradient(180deg, var(--gold-hi), var(--gold-lo));
-  --display: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    var(--vga-light-cyan) 0 33.3%, var(--vga-light-magenta) 33.3% 66.6%,
+    var(--vga-white) 66.6% 100%);
+  /* What is chosen: a DOS menu's cyan bar */
+  --grad: linear-gradient(180deg, var(--vga-light-cyan), var(--vga-cyan));
+  --display: "Perfect DOS VGA 437", "Px437 IBM VGA 8x16", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
@@ -62,8 +73,8 @@ body {
   font: 14px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--fg);
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(170, 170, 170, 0.07), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(214, 51, 143, 0.05), transparent 60%),
+    radial-gradient(1200px 600px at 80% -10%, rgba(0, 170, 170, 0.08), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(170, 0, 170, 0.06), transparent 60%),
     var(--bg);
 }
 
@@ -578,19 +589,18 @@ body.modal-open { overflow: hidden; }
 
 /* ---------- name ---------- */
 
-/* BMNeXT's name as a NeXTSTEP window's title bar: white Helvetica on
-   black, framed in the window's light grey, with the colour bar under it.
-   Not upper case: it's NeXT, with its small e. */
+/* BMDOS's name as a DOS setup program's title: white on VGA blue, in a
+   double-lined box, the colour bar under it. */
 .sidebar-name, .welcome-text {
   font-family: var(--display);
   font-weight: 700;
-  color: var(--nx-white);
-  background: var(--nx-black);
+  color: var(--vga-white);
+  background: var(--vga-blue);
   display: inline-block;
   padding: 0.12em 0.4em;
-  border: 2px solid var(--nx-light);
-  border-radius: 2px;
-  box-shadow: inset 0 0 0 1px var(--nx-dark), 0 0 24px rgba(170, 170, 170, 0.12);
+  border: 4px double var(--vga-grey);
+  border-radius: 0;
+  box-shadow: 0 0 24px rgba(85, 255, 255, 0.12);
 }
 .sidebar-name {
   display: block;
@@ -613,7 +623,6 @@ body.modal-open { overflow: hidden; }
   letter-spacing: 0.08em;
   line-height: 1.05;
 }
-/* Not upper case either: NeXTcube and NeXTstation are spelt so. */
 .welcome-sub {
   margin: 6px 0 0;
   color: var(--gold);

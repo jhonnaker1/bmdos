@@ -12,12 +12,12 @@
 // uses the four i = p, p + 8, p + 16, p + 24 for its phase p (0..7), which
 // are made to add up to 256. The HVS takes them as 11 words.
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_KMS_COMMON_FILTER_H_
-#define BMNEXT_KMS_COMMON_FILTER_H_
+#ifndef BMDOS_KMS_COMMON_FILTER_H_
+#define BMDOS_KMS_COMMON_FILTER_H_
 
 #include <stdint.h>
 

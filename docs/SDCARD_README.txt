@@ -1,36 +1,35 @@
-BMNeXT - bare metal NeXT emulator for the Raspberry Pi 4 and 5
-==============================================================
+BMDOS - bare metal MS-DOS PC emulator for the Raspberry Pi 4 and 5
+===================================================================
 
 Copy everything in this folder to the root of a FAT32 SD card and start a
-Raspberry Pi 5, 500, 4 or 400 from it, with a USB keyboard and mouse.
+Raspberry Pi 5, 500, 4 or 400 from it, with a USB keyboard (and a mouse
+or gamepad if your games want one).
 
-The NeXT needs its ROM, which is copyrighted and not included: copy yours
-into the roms folder (see roms/ROMS.txt). With no disk to start from, the
-NeXT stops at its ROM monitor, the "NeXT>" prompt.
-
-NeXTSTEP: copy a hard disk image with NeXTSTEP (or OPENSTEP) installed to
-the disks folder (or a USB stick), press F12, Disks, SCSI Disk 0, Insert a
-Disk Image, and
-choose it: the NeXT starts again, from it. (Create a Blank Hard Disk there
-makes an empty one, for installing NeXTSTEP on.)
+The PC is DOSBox Pure, with its own DOS: nothing else is needed. No games
+come with BMDOS: copy a game's ZIP (as it is downloaded), a DOS program or
+a disk image into the dos folder (or onto a USB stick), press F12, Run a
+Game or Program, and choose it. DOSBox Pure's start menu lists the
+programs in a ZIP: choose the game's (Right makes it start by itself next
+time).
 
 Keys:
-  F12               BMNeXT's menu       Windows           Command
-  Alt               Alternate           F10 or Delete     Power
-  F5/F6, End/Home   Volume down/up      F1/F2, PgDn/PgUp  Brightness
+  F12 (or a gamepad's Home, or Select+Start)   BMDOS's menu
+  Every other key, F11 too                     the PC's
+In the menu: DOSBox Pure's Menu and Keyboard (its on-screen keyboard and
+gamepad mapper), DOSBox Settings (the PC's speed, sound cards, video...),
+Gamepads (keys, or a PC joystick).
 
 Networking: choose Ethernet or Wi-Fi under Network in the menu (or add
 network=ethernet or network=wifi to cmdline.txt), then open the address
 shown on screen in a browser to manage the files on this card and start
-disk images. (The NeXT itself has no network yet.)
+games. (The PC itself has no network.)
 
-No need to shut down: just switch it off (shutting NeXTSTEP down first
-keeps its disk tidy).
+No need to shut down: just switch it off.
 
-Licences: BMNeXT is under the GPL version 3 (LICENSE.txt); the licenses
-folder has the notices for other projects' code it includes (Previous,
-zlib and the rest), and the firmware folder the Raspberry Pi and Wi-Fi
+Licences: BMDOS is under the GPL version 3 (LICENSE.txt); the licenses
+folder has the notices for other projects' code it includes (DOSBox Pure
+and the rest), and the firmware folder the Raspberry Pi and Wi-Fi
 firmware's licences.
 
-Options are in cmdline.txt; see docs/USER_GUIDE.md in BMNeXT's source
-for all of them: https://github.com/jhonnaker1/bmnext
+Options are in cmdline.txt; see docs/USER_GUIDE.md in BMDOS's source
+for all of them: https://github.com/jhonnaker1/bmdos

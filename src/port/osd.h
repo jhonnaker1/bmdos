@@ -1,16 +1,16 @@
 /*
- * osd.h - BMNeXT's on-screen display: menus, file browser, text entry.
+ * osd.h - BMDOS's on-screen display: menus, file browser, text entry.
  *
- * Previous's own settings dialog belongs to its SDL front end, so BMNeXT
- * draws its own menu (everything about the emulated NeXT, and BMNeXT's
+ * Previous's own settings dialog belongs to its SDL front end, so BMDOS
+ * draws its own menu (everything about the emulated NeXT, and BMDOS's
  * settings), straight into the display's frame buffer. While the display is open the emulation is paused.
  *
- * This file is part of BMNeXT, a bare metal NeXT emulator for
+ * This file is part of BMDOS, a bare metal NeXT emulator for
  * the Raspberry Pi. See LICENSE for licensing details.
  */
 
-#ifndef BMNEXT_OSD_H_
-#define BMNEXT_OSD_H_
+#ifndef BMDOS_OSD_H_
+#define BMDOS_OSD_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -105,4 +105,4 @@ int osd_draw_notification(void *fb, int pitch_px, int bits, int w, int h);
 void osd_draw_disk_status(void *fb, int pitch_px, int bits, int w, int h,
                           const char *text, int light, int error);
 
-#endif /* BMNEXT_OSD_H_ */
+#endif /* BMDOS_OSD_H_ */

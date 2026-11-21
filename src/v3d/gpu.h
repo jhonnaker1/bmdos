@@ -23,12 +23,12 @@
 //  - Circle, include/circle/memory.h (HEAP_DMA30), synchronize64.h (cache
 //    maintenance).
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_V3D_GPU_H_
-#define BMNEXT_V3D_GPU_H_
+#ifndef BMDOS_V3D_GPU_H_
+#define BMDOS_V3D_GPU_H_
 
 #include <stdint.h>
 #include <stddef.h>

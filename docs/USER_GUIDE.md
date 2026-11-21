@@ -1,229 +1,117 @@
-# BMNeXT User Guide
+# BMDOS User Guide
 
-BMNeXT turns a Raspberry Pi 4 or 5 into a NeXT: the NeXT Computer (the
-68030 Cube), the NeXTcube, NeXTstation and their Turbo and Color models.
-It runs the Previous emulator on the bare hardware, so it starts in a couple
-of seconds and can be switched off at any time.
+BMDOS turns a Raspberry Pi 4 or 5 into an MS-DOS PC for DOS games. It runs
+the DOSBox Pure emulator on the bare hardware, so it starts in a couple of
+seconds and can be switched off at any time.
 
-On a Raspberry Pi 5, NeXTSTEP 3.3 and OPENSTEP 4.2 run at the real
-machines' speed or more. The Pi 4 kernel hasn't been tried on a Pi 4 yet.
+BMDOS 0.1.0 has run only in the PC simulator (`tools/hostsim`, see
+[SIMULATOR.md](SIMULATOR.md)); the Pi 4 and Pi 5 kernels build but
+haven't been tried on a Pi yet.
 
 ## The SD card
 
 | File or folder   | What it is                                                  |
 |------------------|-------------------------------------------------------------|
-| `kernel8-rpi4.img`, `kernel_2712.img` | BMNeXT for the Pi 4 and Pi 400, and the Pi 5, 500 and 500+ |
+| `kernel8-rpi4.img`, `kernel_2712.img` | BMDOS for the Pi 4 and Pi 400, and the Pi 5, 500 and 500+ |
 | `bootcode.bin`, `start.elf`, `fixup.dat`, `start4.elf`, `fixup4.dat`, `armstub8-rpi4.bin`, `*.dtb`, `overlays/` | Raspberry Pi firmware |
 | `config.txt`     | Raspberry Pi firmware settings: the display mode            |
-| `cmdline.txt`    | BMNeXT's options (see Options)                              |
-| `bmnext.cfg`     | Settings changed in BMNeXT's menu (written by BMNeXT)       |
-| `previous.cfg`   | Previous's settings: the machine, ROMs, memory, the disks (written by Previous when the menu changes them) |
-| `roms/`          | The NeXT's ROMs: your own (see ROMs)                        |
-| `disks/`         | For your disk images (any folder works)                     |
+| `cmdline.txt`    | BMDOS's options (see Options)                               |
+| `bmdos.cfg`      | Settings changed in BMDOS's menu, and DOSBox Pure's (written by BMDOS) |
+| `dos/`           | For your games and programs (any folder works)              |
+| `dos/system/`    | DOSBox Pure's own files: operating system images, MIDI sound fonts and ROMs (see its README) |
+| `dos/saves/`     | DOSBox Pure's saves: what a game writes, and saved states   |
 | `firmware/`      | Wi-Fi firmware                                              |
 
-The NeXT writes straight to its disk images on the card, and BMNeXT pushes
-everything out to the card every second, so the Pi can be switched off at
-any time; but as with a real NeXT, shutting NeXTSTEP down first (its Power
-Off) keeps its disk tidy.
+DOSBox Pure writes saves straight to the card, and BMDOS pushes everything
+out to the card every second, so the Pi can be switched off at any time.
 
-## ROMs
+## Games and programs
 
-A NeXT starts from its ROM. NeXT's ROMs are copyrighted and not included:
-copy images of yours into the card's `roms` folder (see
-[ROMS.txt](ROMS.txt)). BMNeXT finds them by size: 64K for the NeXT Computer
-(ROM 0.8 to 1.2), 128K for the 68040 machines (ROM 2.x) and the Turbos
-(ROM 3.x, told by a name with "3." in it, as `Rev_3.3_v74.BIN`). Another can
-be chosen in the menu: *Machine*, *ROM*. The NeXTdimension board's ROM (see
-below) is found by its name: `ND_step1_v43.BIN` or `dimension_eeprom.bin`.
+BMDOS runs what DOSBox Pure can: a game's **ZIP** (as it is downloaded,
+or a `.dosz`, a ZIP by another name), a **DOS program** (`.exe`, `.com`,
+`.bat`: its folder becomes the PC's C: drive), a **CD image** (`.iso`,
+`.cue`, `.chd`, `.ins`), a **floppy or hard disk image** (`.img`, `.ima`,
+`.vhd`, `.jrc`, `.tc`), a list of disks (`.m3u`) or a DOSBox configuration
+(`.conf`). No games come with BMDOS.
 
-A new card's NeXT starts in its ROM monitor, the `NeXT>` prompt (`help`
-there lists its commands), until a hard disk is put in SCSI disk 0 (see
-Disks); then it starts from that disk.
+Choose one in the menu: **F12**, *Run a Game or Program*, and browse the
+card (or a USB stick: *[ Drives ]* at the top of the card's list). The PC
+starts again with it, and BMDOS starts with it from then on (it is kept
+in `bmdos.cfg` as `content=`). Or click it in the web UI's file list.
+*Run Nothing* starts the PC with nothing.
 
-## Disks
-
-*Disks* in the menu has the NeXT's drives:
-
-- **SCSI Disk 0 to 6**: each a hard disk, a CD-ROM or a floppy drive, with
-  a disk image. NeXTSTEP and OPENSTEP are installed on a hard disk image
-  (a raw image of the whole disk), of at most 4 GB on the Pi (the most a
-  file on a FAT32 card or stick can be). Inserting a hard disk in SCSI
-  disk 0 also makes the NeXT start from it (*Machine*, *Boot*, *Start From*
-  chooses otherwise).
-- **Optical Drive 0, 1**: the NeXT Computer's magneto-optical drives, with
-  optical disk images.
-- **Floppy Drive**: the 2.88 MB floppy drive of the 68040 machines.
-
-Changing a hard disk restarts the NeXT.
-
-**USB sticks.** Disk images can be on a USB stick (FAT32 or FAT16), up to
-three at once. While a stick is plugged in, the menu's file browser has a
-**[ Drives ]** entry, and `..` above a drive's top folder goes to it: a
-page with the SD card and each stick (*USB stick 1 (USB:)*, *2 (USB2:)*,
-*3 (USB3:)*). A disk on a stick is used from it, as from the card, so
-leave the stick in while the NeXT uses the disk: pulling it out is like
-pulling a disk out of a running NeXT. The web UI shows the sticks too.
-
-**Blank disks**: *Create a Blank Hard Disk...* (in a SCSI disk's menu) and
-*Create a Blank Disk...* (the floppy drive's) make an empty disk image in
-the card's `disks` folder and insert it, for installing NeXTSTEP on (from
-a CD-ROM image in another SCSI disk) or for more space. The sizes are those
-of the NeXT's own drives, which Previous recognises: 105 MB to 2.8 GB hard
-disks (the two "early NeXTSTEP" ones for NeXTSTEP before 2.0), and 720 KB,
-1.44 MB and 2.88 MB floppies. NeXTSTEP's BuildDisk (or Disk.app) then
-labels and formats it. A big one takes a while to write to the SD card;
-the menu shows how far it is.
+A ZIP's files are the PC's C: drive, read only: what the game writes goes
+to `dos/saves` (a ZIP of its own per game), never into the game's ZIP.
+DOSBox Pure's **start menu** lists the programs it found; choose one with
+the arrows (or the gamepad) and Enter. Right (or the gamepad's right)
+sets it to start by itself next time; *Go to Command Line* gives the DOS
+prompt. When the program ends, the start menu comes back.
 
 ## The menu
 
-**F12** (or a gamepad's Home, or Select and Start together) opens the menu,
-and the NeXT stops while it's open. The arrow keys (or the D-pad) move,
-**Enter** (or A) chooses, **Esc** (or B) goes back, and F12 again closes it.
+Press **F12** (or a gamepad's Home button, or Select and Start together):
 
-| Item          | What it has |
-|---------------|-------------|
-| Disks         | SCSI disks, optical drives and the floppy drive; blank disks |
-| Restart       | Switching the NeXT off and on |
-| Machine       | The machine, its ROM, memory, what it starts from (Boot), variable speed, swapping Command and Alt, mouse speed |
-| Video         | Screen size, CRT effect, smooth scaling, disk activity |
-| Sound         | Volume, HDMI or the headphone jack |
-| Network       | The Pi's Ethernet or Wi-Fi, the web UI |
-| About         | Versions, the machine, the display, how fast the emulation runs |
+- **Run a Game or Program**, **Run Nothing**, **Restart the PC** (as
+  switching it off and on, with the same game)
+- **DOSBox Pure's Menu and Keyboard**: DOSBox Pure's own on-screen menu
+  (its start menu, its on-screen keyboard and its gamepad mapper)
+- **DOSBox Settings**: all of DOSBox Pure's settings, in its own
+  categories, with its own descriptions: the emulated CPU's speed
+  (*Emulated Performance*), the machine (SVGA, CGA, Hercules, Tandy), the
+  sound cards, memory, the mouse and more. Most take effect at once; the
+  rest when the PC starts again (*Restart the PC*). They are kept in
+  `bmdos.cfg` as `dosbox_pure_...=` lines.
+- **Gamepads**: what the first two gamepads are to the PC (below)
+- **Video**, **Sound**, **Network**, **About**, **Reboot**, **Shut Down**
 
-The menu's last line shows how fast the emulation runs, as a percentage of
-the real machine's speed. Under 100% the Pi can't keep up with the machine.
+The arrow keys move, Enter chooses, Esc goes back, F12 closes. A gamepad
+works too: the D-pad moves, A chooses, B goes back.
 
-The NeXT's settings (machine, ROM, disks) are Previous's, kept in
-`previous.cfg`; a change that needs it restarts the NeXT, as in Previous's
-own settings dialog. BMNeXT's own (video, sound, network) are kept in
-`bmnext.cfg`.
+## Keyboard, mouse and gamepads
 
-## Keyboard and mouse
+A USB keyboard is the PC's keyboard, every key but F12. A USB mouse is the
+PC's mouse (DOSBox Settings, Input, for its speed and how it moves).
 
-Keys go to the NeXT by where they are on the keyboard. The NeXT's keys a PC
-keyboard doesn't have, as in Previous:
+A USB gamepad (up to four) can be, in the menu's *Gamepads*:
 
-| PC key                   | NeXT key                  |
-|--------------------------|---------------------------|
-| Windows (Command on a Mac keyboard) | Command        |
-| Alt                      | Alternate                 |
-| Control                  | Control                   |
-| F10 or Delete            | Power                     |
-| F5 and F6, End and Home  | Sound volume down and up  |
-| F1 and F2, Page Down and Page Up | Brightness down and up |
+- **Auto** (the default): DOSBox Pure's gamepad mapper. For the games it
+  knows (many), the gamepad plays them as they would be played; for
+  others, the D-pad is the arrow keys and the buttons Enter, Space and
+  other keys. Change it in DOSBox Pure's Controller Mapper (in its start
+  menu, on the right), which keeps the mapping with the game.
+- **Keyboard Keys**: always the arrows and keys, never a game's mapping.
+- **PC Joystick 1** or **2**: a PC joystick in the game port, its stick
+  the D-pad (or left stick) and A and X its buttons: for games that ask
+  for a joystick.
+- **Gravis GamePad**, **Thrustmaster Flight Stick**, **Mouse**, **Off**.
 
-*Machine*, *Swap Command and Alt* swaps those two. Caps Lock holds Shift,
-as on a NeXT keyboard (which has none). F12 is BMNeXT's menu; the Pi's own
-power key (a Pi 400's Fn+F10) shuts the Pi down.
-
-A USB mouse is the NeXT's mouse, with its left and right buttons. Its
-movements are scaled, with some acceleration, as in Previous;
-*Machine*, *Mouse Speed* makes it slower or faster (`fLinScale` and
-`fExpScale` in `previous.cfg`'s `[Mouse]` section are the exact
-settings).
-
-## Boot
-
-*Machine*, *Boot* has Previous's boot options, which the NeXT keeps in its
-NVRAM: what it starts from (the ROM monitor, a SCSI disk, the network, an
-optical disk or the floppy), and its power-on tests (the memory test, the
-power-on test with its sound and SCSI parts, verbose output, extended
-diagnostics). A change restarts the NeXT. The ROM monitor has more: `p`
-sets the boot settings, `b` starts from a device, as `b sd(1,0,0)` for SCSI
-disk 1.
-
-## Machines and speed
-
-*Machine*, *Machine* chooses the NeXT, each with its own CPU, as Previous
-sets them: the NeXT Computer's 68030 at 25 MHz, the 68040 at 25 MHz in the
-NeXTcube and NeXTstation, at 33 MHz in the Turbos. The Color models show
-4096 colours, the others four greys. *Memory* is 8 to 128 MB.
-
-Previous normally keeps the NeXT's time by its CPU: a busy NeXT on a Pi
-that can't keep up runs slow, clock and all. *Variable Speed* runs the
-NeXT's clock in real time instead while programs run, as Previous's own
-option does, so it keeps time whatever the Pi manages.
-
-Not emulated: sound input and the laser printer.
-For colour, choose the NeXTstation Color or NeXTstation Turbo Color: 4096
-colours on the same display, which NeXTSTEP shows in colour as it is; or
-a NeXTcube with a NeXTdimension board (below).
-
-## The NeXTdimension board
-
-On a Raspberry Pi 5, a NeXTcube (or NeXTcube Turbo) can have a
-NeXTdimension: NeXT's 32-bit colour graphics board, with an Intel i860
-processor of its own, in slot 2. It needs its own ROM in the `roms` folder
-(see ROMs). In the menu: *Machine*, *NeXTdimension Board* puts it in (the
-NeXT restarts).
-
-The board has a screen of its own, which NeXTSTEP (tested with 3.3) uses
-for its desktop. There is one display, so *Video*,
-*Screen* chooses which is shown:
-
-- *Auto* (the default): the NeXT's own screen while it starts (its ROM
-  and NeXTSTEP's start-up messages), then the board's once NeXTSTEP draws
-  there (the login window); the NeXT's again when it restarts
-- *NeXT*: always the NeXT's own MegaPixel Display
-- *NeXTdimension*: always the board's
-
-Notes:
-
-- The board's i860 has a Pi core of its own (core 3), and keeps up with
-  the real board's 33 MHz. While the i860 only waits for work, BMNeXT
-  runs it just enough to notice the work coming, so that core is mostly
-  idle; the log's speed lines show how many MHz it really ran.
-- The board's screen is shown in its full 24-bit colour, except with
-  the CRT look (`crt_shader=1`), which draws in 16 bits a pixel (65536
-  colours): smooth shades may show bands then.
-- Not on the Pi 4: the i860 needs a Pi 5 core of its own, and a Pi 4's
-  cores are too slow for it (the menu item is not there).
+A joystick wired to the GPIO pins (BMC64's wiring) joins the first or
+second gamepad.
 
 ## Display
 
-The NeXT's MegaPixel Display is 1120x832, scaled to fill the screen at its
-own shape (square pixels): on a 1080p display (`config.txt`'s default)
-pixel for pixel, with black bars around it; on a 720p one shrunk to fit.
-The display runs at 60 Hz; the NeXT's own 68 Hz frames are shown as they
-come.
+The PC's picture keeps its shape (4:3, as a PC monitor's) whatever its
+resolution: 320x200, 640x400 text, 640x480, SVGA up to 1280x1024. The
+display runs at 60 Hz; DOSBox Pure fits the PC's frames to it (VGA's are
+70 Hz), as it does in RetroArch.
 
-## The NeXT's network
+On a display that can show it, the picture is in 32-bit colour; with the
+CRT effect (Video), in 16-bit.
 
-*Machine*, *Ethernet Connected* plugs the NeXT's Ethernet in (it is
-unplugged on a new card, as in Previous). The NeXT is then on a small
-network of its own inside BMNeXT, with a router (SLiRP, as in Previous)
-that takes its connections out through the Pi's own network: turn that on
-too (*Network*, below). NeXTSTEP gets its address (10.0.2.15) and its
-router (10.0.2.2) by itself as it starts, and can reach what the Pi can:
-ftp, telnet, web servers.
+## Sound
 
-The network inside has Previous's own servers too, which NeXTSTEP asks for
-its settings as it starts (NetInfo), and an NFS server sharing the SD card
-with the NeXT (as `nfs`, at 10.0.2.254).
-
-For names to resolve, create `/etc/resolv.conf` on the NeXT (as root)
-with this line (10.0.2.3 is the DNS server inside BMNeXT, which passes
-lookups on to your network's):
-
-    nameserver 10.0.2.3
-
-**Ping won't work** to anything outside: SLiRP can't send real pings
-(Previous on a desktop is the same), so only its own addresses, 10.0.2.2
-and 10.0.2.3, answer. Connections to servers (telnet, ftp, the web) work:
-test the network with one of those.
-
-Nothing comes in from outside: the NeXT can connect out, but other
-computers can't connect to it.
-
-Tested on a Raspberry Pi 5 with OPENSTEP 4.2.
+DOSBox Pure's sound comes out over HDMI (or the Pi 4's headphone jack),
+at 48 kHz. Which sound cards the PC has is in DOSBox Settings, Audio
+(Sound Blaster 16 by default, with AdLib music, and a Gravis Ultrasound if
+you want one). For General MIDI music, put a sound font (`.sf2`) in
+`dos/system` and choose it there as the MIDI output.
 
 ## Networking and the web UI
 
-BMNeXT can join your network over Ethernet or Wi-Fi and serve a web page
+BMDOS can join your network over Ethernet or Wi-Fi and serve a web page
 for managing the SD card from any browser on the same network, so files can
 be copied to and from the Pi without taking the card out. It is the web UI
-from BMC64.
+from BMC64. (The PC itself has no network.)
 
 Turn it on in the menu's *Network*. For Ethernet, set *Network* to Ethernet
 and reboot. For Wi-Fi, choose *Scan for Wi-Fi Networks*: the first time,
@@ -244,30 +132,29 @@ Wi-Fi needs the files in the `firmware` folder, which `build_sdcard.sh` puts
 there.
 
 Once the Pi has an address, it is shown at the bottom of the screen for a
-few seconds (`WEB UI: HTTP://192.168.1.50/`) and written to the log.
+few seconds (`Web UI: http://192.168.1.50/`) and written to the log.
 Open that address in a browser.
 
 The web UI has:
 
 - **Dashboard**: the Pi's model, address, uptime, temperature, power and
   throttling warnings and free space on the card. Buttons to **Restart**
-  the NeXT (as switching it off and on), **Reboot** BMNeXT, **Shut
-  Down** (the Pi halts; switch it off, then on again to restart; a Pi 400
+  the PC (as switching it off and on), **Reboot** BMDOS, **Shut Down**
+  (the Pi halts; switch it off, then on again to restart; a Pi 400
   switches itself off, and its power key starts it again), and **Disable
   Web UI** until the next reboot.
 - **Files**: browse the SD card and USB sticks (a button for each drive,
   while a stick is plugged in; reload the page after plugging one in);
-  upload (or drag and drop) files into a
-  folder, download, rename, delete, and create folders. Clicking a disk
-  image (`.dsk`, `.img`, `.dd`, `.hd`, `.raw`) **starts it**: it becomes
-  the NeXT's first SCSI hard disk and the NeXT starts from it. `cmdline.txt`, `config.txt`,
-  `bmnext.cfg`, `previous.cfg` and `wpa_supplicant.conf` can be **edited**
-  in the browser; changes take effect after a reboot, and the previous
+  upload (or drag and drop) files into a folder, download, rename, delete,
+  and create folders. Clicking a game's ZIP, a program or a disk image
+  **starts it**, as *Run a Game or Program* does. `cmdline.txt`,
+  `config.txt`, `bmdos.cfg` and `wpa_supplicant.conf` can be **edited** in
+  the browser; changes take effect after a reboot, and the previous
   version is kept as `.bak`.
 
 Uploads can't overwrite `cmdline.txt`, `config.txt` or `wpa_supplicant.conf`
 (edit them instead), or anything in `firmware`. Everything else, including
-the kernels, can be replaced, so a new build of BMNeXT can be uploaded and
+the kernels, can be replaced, so a new build of BMDOS can be uploaded and
 started with **Reboot**. A mistake in `cmdline.txt` or `config.txt` can stop
 the Pi starting, and then needs the card in a computer (the `.bak` copy
 makes that easy).
@@ -277,21 +164,31 @@ The web UI is open to anyone on your network. To protect it with a PIN, set
 (anything) and the PIN. To network without the web UI, set `webui=0`.
 
 The network also sets the Pi's clock, so files saved on the card get the
-right date and time. Set `timezone` to your offset from UTC in minutes, for
-example `timezone=600` for UTC+10. (Previous sets the NeXT's clock to the Pi's date and time when it starts.)
+right date and time, and DOS's clock is right. Set `timezone` to your
+offset from UTC in minutes, for example `timezone=600` for UTC+10.
+
+## USB sticks
+
+Up to three USB sticks (FAT32) can hold games
+as well as the card: they are `USB:`, `USB2:` and `USB3:`, under *[ Drives ]*
+in the menu's file browser and as buttons in the web UI. A stick can be
+plugged in and pulled out while BMDOS runs; pulling out the one the game
+is on starts the PC again without it.
 
 ## Options
 
 `cmdline.txt` is a single line of `name=value` options separated by spaces.
-BMNeXT's menu saves the options it changes to `bmnext.cfg`, one
+BMDOS's menu saves the options it changes to `bmdos.cfg`, one
 `name=value` per line, and those win over `cmdline.txt`. Either file can be
-edited from the web UI. Everything about the emulated machine is in
-Previous's settings, `previous.cfg`, which the menu changes.
+edited from the web UI. DOSBox Pure's own settings are in `bmdos.cfg` too
+(the menu's DOSBox Settings).
 
 | Option              | Values                       | Default  | What it does |
 |---------------------|------------------------------|----------|--------------|
+| `content`           | a path                       | none     | What the PC runs (the menu's Run a Game or Program) |
+| `pad1_type`, `pad2_type` | `auto`, `keyboard`, `joystick1`, `joystick2`, `gravis`, `thrustmaster`, `mouse`, `off` | `auto` | What the first and second gamepads are to the PC (Gamepads) |
+| `mouse_speed`       | percent                      | `100`    | The USB mouse's speed, before DOSBox Pure's own |
 | `aspect`            | number                       | `1.0`    | Multiplies the width of the picture |
-| `disk_activity`     | `0`, `1`                     | `1`      | Show which disk the NeXT is using at the bottom left (Video, Show Disk Activity) |
 | `scale`             | 0.1 to 1.0                   | `1.0`    | Height of the picture as a fraction of the screen (Video, Screen Size; less for a TV that cuts off the edges) |
 | `smooth`            | `0`, `1`                     | `0`      | Bilinear filtering instead of sharp pixels |
 | `crt_shader`        | `0`, `1`                     | `0`      | CRT look (scanlines) from BMC64 |
@@ -302,7 +199,8 @@ Previous's settings, `previous.cfg`, which the menu changes.
 | `sound`             | `0`, `1`                     | `1`      | Sound on or off |
 | `volume`            | 0 to 100                     | `100`    | Sound volume |
 | `audio_out`         | `auto`, `hdmi`, `headphones` | `auto`   | Where the sound goes (`auto`: HDMI, or the headphone jack if the display takes no sound) |
-| `audio_buffer_ms`   | 20 to 500                    | `120`    | Sound buffer; raise it if the sound breaks up |
+| `audio_buffer_ms`   | 20 to 500                    | `80`     | Sound buffer; raise it if the sound breaks up |
+| `core_debug`        | `0`, `1`                     | `0`      | DOSBox Pure's debug messages in the log too |
 | `enable_logging`    | `off`, `uart`, `file`        | `off`    | Where the log goes (see Logging) |
 | `network`           | `off`, `ethernet`, `wifi`    | `off`    | Networking (see Networking and the web UI) |
 | `webui`             | `0`, `1`                     | `1`      | Web UI when networking is on |
@@ -313,18 +211,19 @@ Previous's settings, `previous.cfg`, which the menu changes.
 
 ## Logging
 
-BMNeXT logs what it is doing, which helps when something doesn't work:
-the version, the display and sound set up, the ROMs found, devices coming
-and going, network status, and Previous's own messages (the ROM loaded,
-disks inserted, anything it didn't like). Every 10 seconds it notes how
-fast the NeXT runs, the Pi's CPU clock and temperature, and what part of
-the emulator's time went to the picture, the network, sound and waiting.
-Choose where it goes with `enable_logging` in `cmdline.txt`:
+BMDOS logs what it is doing, which helps when something doesn't work:
+the version, the display and sound set up, what the PC runs, devices
+coming and going, network status, and DOSBox Pure's own messages (which
+program runs, anything it didn't like). Every 10 seconds it notes how
+many frames were shown against the display's refresh, how much of the
+time DOSBox took, the Pi's CPU clock and temperature, and how full the
+sound buffer stayed. Choose where it goes with `enable_logging` in
+`cmdline.txt`:
 
 - **Off** (the default, also when `enable_logging` isn't set): no log.
 - **UART**: the serial port, GPIO14 TX and GPIO15 RX at 115200 baud
   (all boards, the Pi 5 too). Needs a USB serial adapter.
-- **File**: the serial port, and `bmnext.log` in the root of the SD
+- **File**: the serial port, and `bmdos.log` in the root of the SD
   card. The file starts with what was logged since boot, is written to the
   card every few seconds (and is complete after a crash, a hang or
   switching off), and starts again at boot once it is over 1 MB. Download
@@ -334,35 +233,28 @@ Choose where it goes with `enable_logging` in `cmdline.txt`:
 
 ## Troubleshooting
 
-**"No ROM for the NeXT Computer" (or another machine)**: there is no ROM
-for the machine in the card's `roms` folder (see ROMs). Copy yours there.
+**A game runs too fast or too slow**: DOSBox Settings, Performance,
+*Emulated Performance* sets the PC's speed; *AUTO* guesses from the game's
+date. A game from the late 1990s may need more than the Pi can give: the
+speed line in the log (and About) says how much of the time DOSBox takes.
 
-**"The NeXT's CPU halted"**: usually a ROM that isn't the machine's (a 2.x
-or 3.x ROM on the 68030 NeXT Computer, or the other way round). Choose the
-machine again in the menu (Machine, Machine), which sets its CPU, and
-check Machine, ROM.
+**"DOSBox Pure did not start"**: the log says why. F12 opens the menu to
+choose something else.
 
-**The NeXT stops at the "NeXT>" prompt**: that is its ROM monitor, where a
-NeXT with no disk to start from ends up. Insert a disk image with NeXTSTEP
-(Disks, SCSI Disk 0), which restarts it from that disk; or type `b` and
-Enter at the prompt to start from the boot device (Machine, Boot).
-
-**"boot sd(0,0,0)" and nothing more**: the NeXT is waiting for a SCSI disk
-that isn't there (a Turbo's ROM waits a long time for one to spin up).
-Insert one, or set Machine, Boot, Start From to the ROM Monitor.
-
-**The mouse pointer is too fast or too slow**: Machine, Mouse Speed.
+**"Not found: ..."**: the game chosen isn't on the card (or its USB stick
+isn't plugged in). The PC starts with nothing; choose it again.
 
 **No picture**: uncomment `hdmi_safe=1` in `config.txt`. If that works, your
 display doesn't accept 1080p at 60 Hz; try another `hdmi_mode`.
 
 **No sound over HDMI**: try `hdmi_drive=2` in `config.txt`, or
-`audio_out=hdmi` in `cmdline.txt`.
+`audio_out=hdmi` in `cmdline.txt`. No music in a game: check its sound
+setup program chose the Sound Blaster (port 220, IRQ 7, DMA 1, as DOSBox
+Pure's are by default).
 
-**Sound breaks up, or the menu's speed line is under 100%**: the Pi can't
-keep up with that machine. The NeXT Computer (68030, 25 MHz) and the
-68040 machines at 25 MHz take less than the Turbos (33 MHz). For the sound
-alone, raise `audio_buffer_ms` in `cmdline.txt`, e.g. to 200.
+**Sound breaks up**: the Pi can't keep up with that game at that speed:
+lower *Emulated Performance*; for the sound alone, raise
+`audio_buffer_ms` in `cmdline.txt`, e.g. to 200.
 
 **The TV cuts off the edges of the picture or the menu**: many TVs enlarge
 the picture and crop its edges (overscan). Make *Video*, *Screen Size*

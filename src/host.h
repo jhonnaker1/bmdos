@@ -1,16 +1,16 @@
 /*
  * host.h - services the Circle kernel provides to the emulator.
  *
- * The emulator (Previous and the port in src/port/) runs on core 1.
+ * The emulator (DOSBox Pure and the port in src/port/) runs on core 1.
  * Everything it needs from the hardware goes through these functions, which
  * are implemented in src/kernel.cpp.
  *
- * This file is part of BMNeXT, a bare metal NeXT emulator for
+ * This file is part of BMDOS, a bare metal MS-DOS PC emulator for
  * the Raspberry Pi. See LICENSE for licensing details.
  */
 
-#ifndef BMNEXT_HOST_H_
-#define BMNEXT_HOST_H_
+#ifndef BMDOS_HOST_H_
+#define BMDOS_HOST_H_
 
 #include <stdint.h>
 
@@ -24,7 +24,7 @@ const char *host_option(const char *name, const char *default_value);
 int host_option_int(const char *name, int default_value);
 double host_option_double(const char *name, double default_value);
 /* Changes a setting, which then wins over cmdline.txt; host_options_save()
-   writes the settings to bmnext.cfg on the SD card. Both return 0 on
+   writes the settings to bmdos.cfg on the SD card. Both return 0 on
    failure. */
 int host_option_set(const char *name, const char *value);
 int host_options_save(void);
@@ -39,8 +39,9 @@ void host_yield(void);
 
 /* ---- A helper core --------------------------------------------------------- */
 
-/* A core of its own for one long-running task at a time (the
-   NeXTdimension's i860): the Pi 5's core 3, a thread in the PC simulator.
+/* A core of its own for one long-running task at a time (BMNeXT's
+   NeXTdimension i860 had it; BMDOS doesn't use it yet): the Pi 5's
+   core 3, a thread in the PC simulator.
    host_helper_start() returns 0 when TASK is started, -1 when there is no
    helper (the Pi 4) or it is busy. The task must not use Circle's
    scheduler, the network or the files: it sleeps with
@@ -160,7 +161,8 @@ void host_network_status(char *text, unsigned size);
    while the emulator waits for the next frame, and whenever it waits
    itself the emulator goes on. Returns 0 if it can't be started. */
 int host_run_in_background(void (*fn)(void *arg), void *arg);
-/* TCP connections (the NeXT's network, src/port/bmnet.c). On the Pi
+/* TCP connections (BMNeXT's network had them; BMDOS's PC has no
+   network, so nothing uses them yet). On the Pi
    they are Circle's own sockets, not the C library's: its socket calls
    hold the lock on the table of open files while they wait (connect()
    for seconds or minutes), so that a file opened meanwhile (a ROM, a
@@ -174,7 +176,7 @@ int host_tcp_connect(const char *host, const char *port);
 int host_tcp_recv(int connection, void *buffer, unsigned size);
 int host_tcp_send(int connection, const void *buffer, unsigned size);
 void host_tcp_close(int connection);
-/* UDP (the NeXT's network: DNS, and whatever else the NeXT sends), the
+/* UDP (as TCP, unused by BMDOS yet), the
    same way: host_udp_open() makes a socket (a handle, 0 or more; -1 if
    it can't); host_udp_send() sends a datagram to IP:PORT (IP in network
    byte order) and host_udp_recv() takes one that has arrived (its length,
@@ -224,7 +226,7 @@ void host_log(const char *message);
 /* Where the log goes (enable_logging=off|uart|file). */
 #define HOST_LOG_OFF  0
 #define HOST_LOG_UART 1  /* serial port, GPIO14/15 at 115200 */
-#define HOST_LOG_FILE 2  /* serial port and /bmnext.log on the SD card */
+#define HOST_LOG_FILE 2  /* serial port and /bmdos.log on the SD card */
 int host_log_destination(void);
 /* Changes it at once. Returns 0 if the log file cannot be opened. */
 int host_set_log_destination(int destination);
@@ -233,4 +235,4 @@ int host_set_log_destination(int destination);
 }
 #endif
 
-#endif /* BMNEXT_HOST_H_ */
+#endif /* BMDOS_HOST_H_ */

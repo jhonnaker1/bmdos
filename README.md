@@ -1,90 +1,78 @@
-# BMNeXT
+# BMDOS
 
-BMNeXT is a bare metal NeXT Computer, NeXTcube and NeXTstation emulator for
-the Raspberry Pi 4 and 5. It runs the
-[Previous](https://previous.alternative-system.com/) emulator directly on the
-hardware, with no Linux underneath, the same way
+BMDOS is a bare metal MS-DOS PC emulator for the Raspberry Pi 4 and 5, for
+DOS games. It runs [DOSBox Pure](https://codeberg.org/schelling/dosbox-pure)
+directly on the hardware, with no Linux underneath, the same way
 [BMC64](https://github.com/randyrossi/bmc64) does for the Commodore 64,
-[BMA800XL](https://github.com/aminch/bma800xl) for the Atari 800XL,
-[BMCoco](https://github.com/jhonnaker1/bmcoco) for the Tandy Color Computer,
-[BMApple2](https://github.com/jhonnaker1/bmapple2) for the Apple II and
-[BMAtariST](https://github.com/jhonnaker1/bmatarist) for the Atari ST.
+[BMA800XL](https://github.com/aminch/bma800xl) for the Atari 800XL and
+[BMAmiga](https://github.com/jhonnaker1/bmamiga) for the Amiga.
 
-BMNeXT is based on BMAtariST, which is based on BMApple2, BMCoco,
+BMDOS is based on BMNeXT, which is based on BMAtariST, BMApple2, BMCoco,
 [BMA800XL](https://github.com/aminch/bma800xl) by Adam Minchinton, and
-[BMC64](https://github.com/randyrossi/bmc64) by Randy Rossi. The emulator is
-replaced by Previous (itself based on Hatari); the kernel, display, sound,
-network and web UI come from those projects.
+[BMC64](https://github.com/randyrossi/bmc64) by Randy Rossi; its libretro
+front end comes from BMAmiga. The emulator is DOSBox Pure, by Bernhard
+Schelling, built as its libretro core; the kernel, display, sound, network
+and web UI come from those projects. What BMDOS took from each is in
+[docs/INHERITANCE.md](docs/INHERITANCE.md).
 
-BMNeXT wouldn't be possible without the work behind the open source
+BMDOS wouldn't be possible without the work behind the open source
 projects it builds on. Thanks to their authors and contributors for making
 it available; see the [third-party](docs/THIRD_PARTY.md) acknowledgements.
 
-**Status:** on a Raspberry Pi 5, NeXTSTEP 3.3 and OPENSTEP 4.2 run at the
-real machines' speed or more, with sound, the network and the web UI, and
-the NeXTdimension board. The Pi 4 kernel builds and passes the same PC
-simulator tests (`tools/hostsim`), but hasn't been tried on a Pi 4 yet.
+**Status:** version 0.1.0, not yet released. It has run only in the PC
+simulator (`tools/hostsim`): DOSBox Pure's start menu, its DOS prompt, a
+game from a ZIP, the PC speaker, the keyboard and a gamepad (as keys and as
+a PC joystick). The Pi 4 and Pi 5 kernels build, but **haven't been tried
+on a Pi yet**.
 
-- Emulates the NeXT Computer (68030), NeXTcube, NeXTcube Turbo, NeXTstation,
-  NeXTstation Turbo, NeXTstation Color and NeXTstation Turbo Color, chosen in
-  the menu
-- SCSI hard disk, CD-ROM and floppy images, optical (MO) disks and the floppy
-  drive, as Previous has them
-- The MegaPixel Display's 1120x832, in four greys or 4096 colours, pixel for
-  pixel on a 1080p display
-- USB keyboards (keys go to the NeXT by where they are) and mice
-- The NeXT's own network (Machine, Ethernet Connected), through the Pi's
-  Ethernet or Wi-Fi: NeXTSTEP gets its address by itself, and reaches what
-  the Pi does
-- No shutdown needed: just switch it off
-- A menu (F12) for the disks (blank ones too), the machine, ROM, memory,
-  what it starts from, the mouse's speed, video, sound and network
+- DOS games from a ZIP, as they are downloaded: DOSBox Pure lists the
+  programs in it and starts the one you choose (and can remember it)
+- DOS programs (.exe, .com, .bat), CD images (.iso, .cue, .chd), floppy
+  and hard disk images (.img, .ima, .vhd)
+- DOSBox Pure's own DOS: no DOS needed. Windows 9x or MS-DOS hard disk
+  images of your own can be booted too
+- Sound Blaster, Gravis Ultrasound, AdLib, PC speaker, Tandy and Disney
+  sound, General MIDI with a sound font, as DOSBox Pure has them
+- USB keyboards and mice, and USB gamepads: DOSBox Pure maps the gamepad
+  for the games it knows, to keys otherwise, or makes it a PC joystick
+- DOSBox Pure's on-screen menu and keyboard, and its gamepad mapper
+- A menu (F12) for what to run, all of DOSBox Pure's settings, the
+  gamepads, video, sound and network
 - Optional Ethernet or Wi-Fi with BMC64's web UI: manage the SD card from a
-  browser and start disk images
-- Disk images on USB sticks (up to three) as well as the SD card
-- The NeXTdimension board (Raspberry Pi 5): the NeXTcube's 32-bit colour
-  graphics board with its own Intel i860, which NeXTSTEP draws its
-  desktop on (Machine, NeXTdimension Board; Video, Screen)
+  browser and start games
+- Games on USB sticks (up to three) as well as the SD card
+- No shutdown needed: just switch it off
 
-Not emulated: sound input. For colour without the NeXTdimension, choose a
-NeXTstation Color or NeXTstation Turbo Color in the menu (F12, Machine,
-Machine): 4096 colours on the same 1120x832 display.
+## Games
 
-## ROMs and NeXTSTEP
-
-NeXT's ROMs and NeXTSTEP are copyrighted and not included. Copy your ROMs
-into the card's `roms` folder: a 64K one for the NeXT Computer (ROM 1.x),
-and 128K ones for the 68040 machines (ROM 2.x) and the Turbos (ROM 3.x).
-Disk images go in `disks`. See [docs/ROMS.txt](docs/ROMS.txt).
+None come with BMDOS: copy your own (or freeware and shareware games) into
+the card's `dos` folder. A game's ZIP works as it is.
 
 ## Supported hardware
 
 The **Raspberry Pi 4 Model B and Pi 400** (`kernel8-rpi4.img`, 64-bit) and
-the **Raspberry Pi 5, Pi 500 and Pi 500+** (`kernel_2712.img`, 64-bit). The
-NeXT's 68030 and 68040 are emulated with their MMUs, which takes a fast
-core. See [docs/PI4.md](docs/PI4.md) and [docs/PI5.md](docs/PI5.md).
+the **Raspberry Pi 5, Pi 500 and Pi 500+** (`kernel_2712.img`, 64-bit),
+with DOSBox's dynamic recompiler for the ARM's 64-bit instructions. See
+[docs/PI4.md](docs/PI4.md) and [docs/PI5.md](docs/PI5.md).
 
 ## Getting started
 
 1. Format an SD card as FAT32.
 2. Copy the contents of a release zip (or of `build/sdcard/` after building)
    to the root of the card.
-3. Copy your ROMs into `roms`, and a NeXTSTEP disk image into `disks`.
-4. Boot the Pi with a USB keyboard and mouse connected. The NeXT tests
-   itself and stops at its ROM monitor (`NeXT>`). Press **F12**, choose
-   *Disks*, *SCSI Disk 0*, *Insert a Disk Image...*, and choose yours:
-   the NeXT starts again, from it.
+3. Copy a game's ZIP into `dos`.
+4. Boot the Pi with a USB keyboard connected. DOSBox Pure's start menu
+   comes up. Press **F12**, choose *Run a Game or Program*, and choose
+   the ZIP: DOSBox Pure lists the programs in it; choose the game's.
 
 ## Keys
 
-| Key                      | Does                                              |
-|--------------------------|---------------------------------------------------|
-| F12                      | BMNeXT's menu                                     |
-| Windows / Command        | Command                                           |
-| Alt                      | Alternate                                         |
-| F10 or Delete            | The NeXT's Power key                              |
-| F5/F6 (End/Home)         | Sound volume down/up                              |
-| F1/F2 (Page Down/Up)     | Brightness down/up                                |
+| Key or button                     | Does                                     |
+|-----------------------------------|------------------------------------------|
+| F12, gamepad Home or Select+Start | BMDOS's menu                             |
+| F12, *DOSBox Pure's Menu and Keyboard* | DOSBox Pure's on-screen menu, keyboard and gamepad mapper |
+
+Every other key is the PC's, F11 included.
 
 See the [User Guide](docs/USER_GUIDE.md) for all the details, including the
 options in `cmdline.txt`. All the documents are listed in
@@ -93,50 +81,44 @@ options in `cmdline.txt`. All the documents are listed in
 ## Building
 
 ```
-BMNEXT_ROMS=/path/to/your/roms ./build_sdcard.sh
+./build_sdcard.sh
 ```
 
 builds the kernels for the Pi 4 and 5 (`./build_sdcard.sh pi5` builds one)
 and stages the SD card files in `build/sdcard/`. It works on Linux and
-macOS. The PC simulator's tests need your ROMs (`BMNEXT_ROMS`); without it
-they are skipped. See [docs/BUILDING.md](docs/BUILDING.md).
+macOS. See [docs/BUILDING.md](docs/BUILDING.md).
 
-BMNeXT can also run on a PC, in a simulator, for testing and debugging, and
+BMDOS can also run on a PC, in a simulator, for testing and debugging, and
 live in a web page: see [docs/SIMULATOR.md](docs/SIMULATOR.md).
 
 ## How it fits together
 
 ```
-src/main.cpp, kernel.cpp   Circle kernel: USB, GPIO, SD card; runs Previous on core 1
+src/main.cpp, kernel.cpp   Circle kernel: USB, GPIO, SD card; runs DOSBox Pure on core 1
 src/network.cpp, webui/    Ethernet / Wi-Fi and the web UI, from BMC64
 src/host.h                 What the kernel offers the emulator
-src/port/main_next.c       Previous's main loop, on one thread
-src/port/platform.c        Previous's front end: starting it, ROMs, the display
-src/port/host_next.c       Previous's host functions (locks, time) on one thread
-src/port/screen.c          The NeXT's display to the frame buffer
-src/port/audio.c           Previous's sound output
-src/port/keymap.c          USB keys and mice to the NeXT's
-src/port/nextbus.c         The NeXTbus, without the NeXTdimension
-src/port/nonet.c           The network, unplugged
+src/port/platform.c        The libretro front end: runs the core; its picture,
+                           sound, keyboard, mouse and gamepads
+src/port/coreopts.c        DOSBox Pure's settings, kept in bmdos.cfg
+src/port/vfs.c             The libretro file interface, over the SD card and USB sticks
+src/port/keys.c            USB keys to libretro's
+src/port/clock.c           The core's time and sleeps
+src/port/circle/           Threads (cooperative, on libco) and POSIX functions
+                           for the core on Circle
 src/port/menu.c, osd.c     The menu
-src/port/config.h          Previous's build options
-src/port/previous.mk       Previous's (and zlib's) source list
-third_party/previous       Previous (SVN trunk; tools/update_previous.sh)
-third_party/zlib           zlib (submodule)
+src/port/dosbox.mk         DOSBox Pure's source list and flags
+third_party/dosbox-pure    DOSBox Pure (submodule, from Codeberg)
 third_party/circle-stdlib  Circle and newlib (submodule)
 src/av/, src/v3d/, src/kms Shared Pi 4/5 video, GPU and display drivers
 tools/hostsim              Runs the emulator port on a PC for testing
 ```
 
-Previous is used unmodified, minus the files BMNeXT must not ship (NeXT's
-ROMs): everything specific to BMNeXT is in `src/`.
-Previous's CPU core is generated when it is built, as in Previous's own
-build.
+DOSBox Pure is used unmodified: everything specific to BMDOS is in `src/`.
 
 ## Licence
 
-BMNeXT is free software under the GNU General Public License version 3;
+BMDOS is free software under the GNU General Public License version 3;
 see [LICENSE](LICENSE). It includes software from other projects under
-their own licences (Previous under the GPL version 2 or later, with parts
-from WinUAE, Hatari, ARAnyM and SoftFloat; zlib under its own); see
-[docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).
+their own licences (DOSBox Pure under the GPL version 2 or later, with
+parts under the LGPL 2.1 or later, MIT, BSD and public domain; libco
+under the ISC licence); see [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).

@@ -3,8 +3,8 @@
 //
 // Modified for BMA800XL: protects the Atari emulator's configuration
 // files; BMC64's profile and keyboard map files are removed.
-// Changed for BMCoco, BMApple2 and BMAtariST, and for BMNeXT: the
-// NeXT's files. Uploads fill a 64 KB buffer before each SD write and log
+// Changed for BMCoco, BMApple2, BMAtariST and BMNeXT, and for BMDOS: the
+// PC's files. Uploads fill a 64 KB buffer before each SD write and log
 // their speed (BMA800XL). The USB sticks are volumes USB, USB2 and USB3
 // (paths "USB:/..."), while plugged in.
 //
@@ -312,12 +312,10 @@ boolean IsConfigFile(const char *name) {
   return FALSE;
 }
 
-// previous.cfg (Previous's settings and disks) and bmnext.cfg (the BMNeXT
-// menu's settings) are editable too, but (unlike the files above) stay
+// bmdos.cfg (the BMDOS menu's settings and DOSBox Pure's) is editable too, but (unlike the files above) stay
 // uploadable so a prepared copy can still be dropped on the card.
 boolean IsEditableName(const char *name) {
-  return IsConfigFile(name) || CiEqual(name, "previous.cfg") ||
-         CiEqual(name, "bmnext.cfg");
+  return IsConfigFile(name) || CiEqual(name, "bmdos.cfg");
 }
 
 // The config files are editable only in the volume root.

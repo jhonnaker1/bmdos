@@ -3,7 +3,8 @@
 //
 // Modified for BMA800XL: the Atari 800XL's name, settings file and the
 // file types atari800 can start, in place of BMC64's machines.
-// Changed for BMCoco, BMApple2 and BMAtariST, and for BMNeXT: the NeXT.
+// Changed for BMCoco, BMApple2, BMAtariST and BMNeXT, and for BMDOS: DOS
+// programs and disks.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,18 +27,21 @@
 #include <stdio.h>
 
 // The machine running (src/port/platform.c).
-extern "C" const char *bmnext_machine_text(void);
+extern "C" const char *bmdos_machine_text(void);
 
 namespace {
 
-// The disk images the NeXT can start from (emu_autostart_interrupt() in
-// src/port/platform.c makes them its first SCSI disk and restarts it).
+// What DOSBox Pure can start (emu_autostart_interrupt() in
+// src/port/platform.c loads it as the PC's content and starts the PC
+// again): a game's ZIP or folder's program, a DOS program, a CD or floppy
+// or hard disk image.
 const char *const kRunTypes[] = {
-    "dsk", "img", "dd", "hd", "raw", 0,
+    "zip", "dosz", "exe", "com", "bat", "iso", "cue", "chd", "img", "ima",
+    "vhd", "jrc", "tc", "m3u", "conf", 0,
 };
 
 const WebUiMachine kMachine = {
-    "/previous.cfg", kRunTypes,
+    "/bmdos.cfg", kRunTypes,
 };
 
 char Lower(char c) {
@@ -51,7 +55,7 @@ const WebUiMachine *WebUiMachineGet(void) {
 }
 
 const char *WebUiMachineName(void) {
-  return bmnext_machine_text();
+  return bmdos_machine_text();
 }
 
 boolean WebUiMachineCanRun(const char *ext) {

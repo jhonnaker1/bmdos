@@ -3,56 +3,40 @@
 # Runs the emulator port on the PC (see host_sim.c) through a set of
 # scripted tests and checks the results.
 #
-#   BMNEXT_ROMS=folder tools/hostsim/run_tests.sh
-#   tools/hostsim/run_tests.sh --bmnet-only    (the network's sockets only)
+#   tools/hostsim/run_tests.sh
+#   BMDOS_GAME=game.zip tools/hostsim/run_tests.sh   (also starts a game)
 #
-# The NeXT's ROMs are not part of BMNeXT: BMNEXT_ROMS is a folder with
-# yours (searched with its subfolders for 64K and 128K .bin files, as
-# Previous's Rev_1.0_v41.BIN, Rev_2.5_v66.BIN and Rev_3.3_v74.BIN). The
-# tests boot each NeXT to its ROM monitor (there is no disk to start
-# from). Output, including screenshots (.ppm), goes to tools/hostsim/out/.
+# No DOS or game files are needed: DOSBox Pure has its own DOS, and the
+# tests' programs are made by dos/make_test_zip.py (BEEP.COM sounds the PC
+# speaker until a key is pressed, JOY.COM waits for the joystick's
+# button). BMDOS_GAME, if set, is a game's ZIP that is started too, and
+# its screen saved (out/game/shot.ppm). Output, including screenshots
+# (.ppm), goes to tools/hostsim/out/.
 #
 
 set -u
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 OUT=$HERE/out
-SIM=$HERE/build/bmnext_sim
-
-# The network's sockets (bmnet.c) first: they need no ROMs.
-make -s -C "$HERE" build/bmnet_test || exit 1
-if ! "$HERE/build/bmnet_test"; then
-    echo "bmnet's tests failed." >&2
-    exit 1
-fi
-if [ "${1:-}" = "--bmnet-only" ]; then
-    exit 0
-fi
-
-if [ -z "${BMNEXT_ROMS:-}" ] || [ ! -d "$BMNEXT_ROMS" ]; then
-    echo "Set BMNEXT_ROMS to a folder with your NeXT ROMs." >&2
-    exit 2
-fi
+SIM=$HERE/build/bmdos_sim
 
 make -s -C "$HERE" -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)" || exit 1
 
 rm -rf "$OUT"
-mkdir -p "$OUT/roms"
-find "$BMNEXT_ROMS" -iname '*.bin' \( -size 65536c -o -size 131072c \) -exec cp {} "$OUT/roms/" \;
+mkdir -p "$OUT/zips"
+python3 "$HERE/dos/make_test_zip.py" "$OUT/zips/bmdostest.zip" || exit 1
 
 FAILED=0
 pass() { echo "PASS  $1"; }
 fail() { echo "FAIL  $1: $2"; FAILED=$((FAILED + 1)); }
 
-# run NAME CMDLINE SCRIPT [SYSTEM]: runs the simulator in out/NAME, a
-# stand-in SD card with the ROMs in its roms folder; SYSTEM, if given, is
-# previous.cfg's [System] section. At most two minutes.
+# run NAME CMDLINE SCRIPT: runs the simulator in out/NAME, a stand-in SD
+# card with the test ZIP in its dos folder. At most two minutes.
 run() {
-    local name=$1 cmdline=$2 script=$3 system=${4:-}
-    mkdir -p "$OUT/$name"
-    ln -s "$OUT/roms" "$OUT/$name/roms" 2>/dev/null
-    [ -n "$system" ] && printf "[System]\n$system" > "$OUT/$name/previous.cfg"
-    (cd "$OUT/$name" && printf "$script" | BMNEXT_CMDLINE="root=. $cmdline" "$SIM" > log.txt 2>&1 &
+    local name=$1 cmdline=$2 script=$3
+    mkdir -p "$OUT/$name/dos"
+    cp "$OUT/zips/bmdostest.zip" "$OUT/$name/dos/"
+    (cd "$OUT/$name" && printf "$script" | BMDOS_CMDLINE="root=. $cmdline" "$SIM" > log.txt 2>&1 &
      pid=$!; (sleep 120; kill $pid 2>/dev/null) & killer=$!; wait $pid; kill $killer 2>/dev/null)
 }
 
@@ -65,12 +49,21 @@ check_log() {
     fi
 }
 
-# check_cfg NAME FILE REGEX MESSAGE: out/NAME/FILE must have a line REGEX
-check_cfg() {
-    if grep -Eq "$3" "$OUT/$1/$2" 2>/dev/null; then
-        pass "$1: $4"
+# check_no_log NAME REGEX MESSAGE: the log must not contain REGEX
+check_no_log() {
+    if grep -Eq "$2" "$OUT/$1/log.txt"; then
+        fail "$1" "$3 (see out/$1/log.txt)"
     else
-        fail "$1" "$4 (not in out/$1/$2)"
+        pass "$1: $3"
+    fi
+}
+
+# check_cfg NAME REGEX MESSAGE: out/NAME/bmdos.cfg must have a line REGEX
+check_cfg() {
+    if grep -Eq "$2" "$OUT/$1/bmdos.cfg" 2>/dev/null; then
+        pass "$1: $3"
+    else
+        fail "$1" "$3 (not in out/$1/bmdos.cfg)"
     fi
 }
 
@@ -90,25 +83,6 @@ print(sum(1 for i in range(0, len(px), 3) if px[i:i + 3] == want))
 EOF
 }
 
-# monitor NAME FILE: a ROM monitor's window (white, 0x000 in the NeXT's
-# greys) fills much of the screen
-monitor() {
-    local n
-    n=$(count "$1" "$2" 255 255 255)
-    if [ "$n" -gt 300000 ]; then
-        pass "$1: the ROM monitor's window ($2)"
-    else
-        fail "$1" "no ROM monitor in $2.ppm ($n white pixels)"
-    fi
-}
-
-same() {
-    if [ -f "$OUT/$1/$2.ppm" ] && [ -f "$OUT/$1/$3.ppm" ] && cmp -s "$OUT/$1/$2.ppm" "$OUT/$1/$3.ppm"; then
-        pass "$1: $2 and $3 are the same"
-    else
-        fail "$1" "$2 and $3 differ"
-    fi
-}
 differ() {
     if [ -f "$OUT/$1/$2.ppm" ] && [ -f "$OUT/$1/$3.ppm" ] && ! cmp -s "$OUT/$1/$2.ppm" "$OUT/$1/$3.ppm"; then
         pass "$1: $2 and $3 differ"
@@ -117,192 +91,146 @@ differ() {
     fi
 }
 
+# sound NAME N: the Nth "audio" line's frames of tone (sound that swings:
+# not silence, nor the level a PC speaker is left at once it stops)
+sound() {
+    grep "audio written" "$OUT/$1/log.txt" | sed -n "${2}p" | sed 's/.*tone \([0-9]*\) frames.*/\1/'
+}
+
 # USB HID usages used below.
-F12=0x45 DOWN=0x51 UP=0x52 ENTER=0x28 ESC=0x29 POWER=0x66 A=0x04
+F12=0x45 DOWN=0x51 ENTER=0x28 SPACE=0x2c POWER=0x66
 # KEY USAGE FRAME: press at FRAME, release two frames later
 key() { printf '%d key %s 1\\n%d key %s 0\\n' "$2" "$1" $(($2 + 2)) "$1"; }
 
-# [System] settings as Previous's Configuration_SetSystemDefaults() makes
-# them for each machine.
-STATION='nMachineType = 2\nbTurbo = FALSE\nbColor = FALSE\nnCpuLevel = 4\nnCpuFreq = 25\nn_FPUType = 68040\nnSCSI = 1\nnRTC = 0\nbADB = FALSE\nbNBIC = FALSE\nbDSPMemoryExpansion = TRUE\n'
-TURBOCOLOR='nMachineType = 2\nbTurbo = TRUE\nbColor = TRUE\nnCpuLevel = 4\nnCpuFreq = 33\nn_FPUType = 68040\nnSCSI = 1\nnRTC = 1\nbADB = TRUE\nbNBIC = FALSE\nbDSPMemoryExpansion = TRUE\n'
+ZIP=./dos/bmdostest.zip
+# HOST_PAD_* bits (src/host.h)
+PAD_A=1 PAD_DOWN=0x2000
 
-echo "The NeXT Computer (68030) starts to its ROM monitor"
-run boot "" '900 shot a.ppm\n1800 shot b.ppm\n1801 quit\n'
-check_log boot "Loading ROM from .*roms/" "a ROM found in roms/"
-check_log boot "CPU=68030, FPU=68882, MMU=68030" "a 68030 with its FPU and MMU"
-check_cfg boot previous.cfg "^szRom030FileName = .*roms/" "a new card's previous.cfg names the ROM"
-monitor boot b
-same boot a b
-
-echo "The NeXTstation (68040, ROM 2.x) and NeXTstation Turbo Color (ROM 3.x)"
-run station "" '1800 shot a.ppm\n1801 quit\n' "$STATION"
-check_log station "CPU=68040, FPU=68040, MMU=68040" "a 68040"
-check_log station "Loading ROM from .*roms/.*2" "the 2.x ROM"
-# previous.cfg was there (its [System]): saving it goes through a
-# temporary file, which on the Pi is in memory (posix_extra.c).
-check_cfg station previous.cfg "^\\[Dimension\\]" "settings saved over an existing previous.cfg"
-check_cfg station previous.cfg "^szRom040FileName = .*roms/" "the ROM saved over an existing previous.cfg"
-monitor station a
-run turbocolor "" '1800 shot a.ppm\n1801 quit\n' "$TURBOCOLOR"
-check_log turbocolor "Loading ROM from .*roms/.*3" "the 3.x ROM"
-monitor turbocolor a
-
-# A NeXTcube (68040) with a NeXTdimension board in slot 2, when its ROM
-# is there (dimension_eeprom.bin or ND_step1_v43.BIN, 128K).
-if ls "$OUT/roms" | grep -Eiq '^nd[_-]|dimension'; then
-    echo "The NeXTdimension board"
-    run dimension "" '1800 shot a.ppm\n1801 quit\n' \
-        "${STATION/nMachineType = 2/nMachineType = 1}[Dimension]\nbEnabled0 = TRUE\n"
-    check_log dimension "NeXTdimension board at slot 2" "the board is in slot 2"
-    check_log dimension "\\[ND\\] Read ROM from .*roms/" "its ROM, found in roms/"
-    check_log dimension "\\[i860\\] \\*+ RESTARTED" "the NeXT starts its i860"
-    # Screen Auto: the NeXT's, as the board's ROM leaves its own plain.
-    monitor dimension a
-    # The i860 on a helper core of its own, as on the Pi 5 (a thread here).
-    BMNEXT_SIM_HELPER=1 run dimension_helper "" '1800 shot a.ppm\n1801 quit\n' \
-        "${STATION/nMachineType = 2/nMachineType = 1}[Dimension]\nbEnabled0 = TRUE\n"
-    check_log dimension_helper "i860 at slot 2 on the helper core" "the i860 on the helper core"
-    check_log dimension_helper "\\[i860\\] \\*+ RESTARTED" "the NeXT starts it there"
-    monitor dimension_helper a
-    # Machine > NeXTdimension Board off and on again: the i860's thread ends
-    # and a new one starts on the helper.
-    BMNEXT_SIM_HELPER=1 run dimension_helper "" "$(key $F12 600)$(key $DOWN 610)$(key $DOWN 615)$(key $ENTER 620)$(key $DOWN 630)$(key $DOWN 635)$(key $DOWN 640)$(key $DOWN 645)$(key $ENTER 655)$(key $ENTER 900)$(key $F12 1000)2400 quit\n"
-    n=$(grep -c "i860 at slot 2 on the helper core" "$OUT/dimension_helper/log.txt")
-    if [ "$n" -eq 2 ]; then
-        pass "dimension_helper: the board off and on again, a new i860 thread"
-    else
-        fail "dimension_helper" "the i860 started $n time(s) on the helper, not 2"
-    fi
-    # Screen NeXTdimension: the board's, with no ROM monitor on it.
-    run dimension_screen "nd_screen=dimension" '1800 shot a.ppm\n1801 quit\n' \
-        "${STATION/nMachineType = 2/nMachineType = 1}[Dimension]\nbEnabled0 = TRUE\n"
-    n=$(count dimension_screen a 255 255 255)
-    if [ "$n" -lt 1000 ]; then
-        pass "dimension_screen: the board's screen when chosen"
-    else
-        fail "dimension_screen" "the NeXT's screen in a.ppm ($n white pixels)"
-    fi
-    # In 24-bit colour, on the 32-bit frame buffer.
-    check_log dimension_screen "showing the 32-bit frame buffer" "the board's screen in 32 bits"
-    # On a display without one, in RGB565.
-    BMNEXT_SIM_NO32=1 run dimension_16 "nd_screen=dimension" '1800 shot a.ppm\n1801 quit\n' \
-        "${STATION/nMachineType = 2/nMachineType = 1}[Dimension]\nbEnabled0 = TRUE\n"
-    n=$(count dimension_16 a 255 255 255)
-    if [ "$n" -lt 1000 ] && ! grep -q "32-bit frame buffer" "$OUT/dimension_16/log.txt"; then
-        pass "dimension_16: the board's screen in RGB565 without a 32-bit frame buffer"
-    else
-        fail "dimension_16" "not the board's screen in RGB565 ($n white pixels)"
-    fi
+echo "No content: DOSBox Pure's start menu, then its command line"
+run boot "" "250 shot menu.ppm\n$(key $ENTER 260)400 shot prompt.ppm\n401 quit\n"
+check_log boot "starting with no content" "starts with nothing to run"
+check_log boot "DOSBox Pure running: 640x400, 70.09 Hz" "DOSBox Pure runs (VGA's 70 Hz text mode)"
+check_log boot "Program: PUREMENU" "its start menu"
+check_log boot "Program: DOSBOX" "Enter: its command line"
+check_log boot "THROTTLE.*VSYNC 60" "told it's paced by a 60 Hz display"
+differ boot menu prompt
+check_no_log boot "audio underrun \\(" "no sound underruns"
+if [ -d "$OUT/boot/dos/system" ] && [ -d "$OUT/boot/dos/saves" ]; then
+    pass "boot: dos/system and dos/saves made on the card"
 else
-    echo "(no NeXTdimension ROM: its test skipped)"
+    fail "boot" "no dos/system or dos/saves on the card"
 fi
 
-echo "Typing at the ROM monitor"
-run typing "" "1200 shot before.ppm\n1210 type help\n$(key $ENTER 1260)1500 shot after.ppm\n1501 quit\n"
-differ typing before after
-# The same keys, each pressed and let go in the same frame as the others
-# (fast typing, a key let go as the next is pressed): the NeXT's keyboard
-# holds one event at a time, so they must reach it one by one.
-FAST=""
-for u in 0x0b 0x08 0x0f 0x13 $ENTER; do FAST="${FAST}1210 key $u 1\n1210 key $u 0\n"; done
-run fasttype "" "${FAST}1500 shot after.ppm\n1501 quit\n"
-cp "$OUT/typing/after.ppm" "$OUT/fasttype/typed.ppm"
-same fasttype typed after
-# The Turbos' keyboard is Apple's (ADB): A is its key code 0, which the
-# key table also had for "no key", so A did nothing.
-run adbkeys "" "1800 shot before.ppm\n$(key $A 1810)1900 shot after.ppm\n1901 quit\n" "$TURBOCOLOR"
-differ adbkeys before after
-
-echo "The menu"
-run menu "" "1200 shot before.ppm\n$(key $F12 1210)1230 shot menu.ppm\n$(key $ESC 1240)1260 shot after.ppm\n1261 quit\n"
-differ menu before menu
-same menu before after
-run padmenu "" '1200 pad 0 0\n1210 pad 0 0x0100\n1214 pad 0 0\n1230 shot menu.ppm\n1231 quit\n'
-cp "$OUT/menu/menu.ppm" "$OUT/padmenu/f12menu.ppm"
-same padmenu f12menu menu
-
-echo "The menu's settings"
-# Menu, Machine (two down), Mouse Speed (eight down), the last: Fastest.
-run mouse "" "$(key $F12 600)$(key $DOWN 610)$(key $DOWN 615)$(key $ENTER 620)$(key $DOWN 650)$(key $DOWN 655)$(key $DOWN 660)$(key $DOWN 665)$(key $DOWN 670)$(key $DOWN 675)$(key $DOWN 680)$(key $DOWN 685)$(key $ENTER 690)$(key $DOWN 720)$(key $DOWN 725)$(key $DOWN 730)$(key $DOWN 735)$(key $ENTER 740)$(key $F12 760)800 quit\n"
-check_cfg mouse previous.cfg "^fLinScale = 2" "Machine > Mouse Speed saved in previous.cfg"
-# Menu, Machine, Boot (three down), Start From, SCSI Disk (one down).
-run boot_menu "" "$(key $F12 600)$(key $DOWN 610)$(key $DOWN 615)$(key $ENTER 620)$(key $DOWN 630)$(key $DOWN 635)$(key $DOWN 640)$(key $ENTER 650)$(key $ENTER 680)$(key $DOWN 710)$(key $ENTER 720)$(key $F12 760)800 quit\n"
-check_cfg boot_menu previous.cfg "^nBootDevice = 1" "Machine > Boot > Start From saved in previous.cfg"
-check_log boot_menu "boot options reset" "the NeXT restarts for it"
-# Menu, Machine, Ethernet Connected (five down): the NeXT's network on.
-run ethernet "" "$(key $F12 600)$(key $DOWN 610)$(key $DOWN 615)$(key $ENTER 620)$(key $DOWN 630)$(key $DOWN 635)$(key $DOWN 640)$(key $DOWN 645)$(key $DOWN 650)$(key $ENTER 655)$(key $F12 700)1200 quit\n"
-check_cfg ethernet previous.cfg "^bEthernetConnected = TRUE" "Machine > Ethernet Connected saved in previous.cfg"
-# Menu, Disks, SCSI Disk 0, Create a Blank Hard Disk (two down), 105 MB.
-run blank "" "$(key $F12 600)$(key $ENTER 610)$(key $ENTER 620)$(key $DOWN 650)$(key $DOWN 655)$(key $ENTER 660)$(key $ENTER 690)$(key $F12 910)1200 quit\n"
-if [ "$(wc -c < "$OUT/blank/disks/blank105.sd" 2>/dev/null)" -eq 110100480 ] 2>/dev/null &&
-   cmp -s -n 110100480 "$OUT/blank/disks/blank105.sd" /dev/zero; then
-    pass "blank: a 105 MB blank disk, all zeros, in disks/"
+echo "A ZIP: its programs, the keyboard at the DOS prompt, the PC speaker"
+# The start menu lists BEEP.COM, JOY.COM, then "Go to Command Line".
+run zip "content=$ZIP" "$(key $DOWN 200)$(key $DOWN 205)$(key $ENTER 210)300 type BEEP\n$(key $ENTER 330)380 audio\n420 audio\n$(key $SPACE 430)480 audio\n520 audio\n530 quit\n"
+check_log zip "starting \./dos/bmdostest\.zip" "the ZIP is the PC's content"
+check_log zip "Program: BEEP" "BEEP typed at the prompt runs BEEP.COM"
+before=$(sound zip 1) during=$(sound zip 2) after1=$(sound zip 3) after2=$(sound zip 4)
+if [ -n "$during" ] && [ $((during - before)) -ge 20000 ]; then
+    pass "zip: the speaker sounds ($((during - before)) frames of tone in 40)"
 else
-    fail "blank" "no 105 MB blank disk in out/blank/disks/"
+    fail "zip" "no speaker sound (${before:-?} to ${during:-?})"
 fi
-check_cfg blank previous.cfg "^szImageName0 = .*disks/blank105\.sd" "it is SCSI disk 0"
-check_log blank "SCSI disk 0: Insert .*blank105\.sd" "the NeXT has it"
-# A disk on a USB stick (BMNEXT_USB: the folder usb/): Menu, Disks, SCSI
-# Disk 0, Insert a Disk Image (one down); the browser opens in disks/; up
-# to "[ Drives ]", the second drive (the stick) and its first file.
-mkdir -p "$OUT/usbdisk/disks" "$OUT/usbdisk/usb"
-dd if=/dev/zero of="$OUT/usbdisk/disks/card.img" bs=1024 count=1024 2>/dev/null
-dd if=/dev/zero of="$OUT/usbdisk/usb/stick.img" bs=1024 count=1024 2>/dev/null
-BMNEXT_USB=1 run usbdisk "" "$(key $F12 600)$(key $ENTER 610)$(key $ENTER 620)$(key $DOWN 640)$(key $ENTER 650)$(key $UP 680)$(key $ENTER 690)$(key $DOWN 710)$(key $ENTER 720)$(key $ENTER 740)$(key $F12 900)1200 quit\n"
-check_cfg usbdisk previous.cfg "^szImageName0 = .*usb/stick\.img" "a disk image on a USB stick, from the drives page"
-check_log usbdisk "SCSI disk 0: Insert .*usb/stick\.img" "the NeXT has it"
-
-echo "The network (SLiRP)"
-# Started from the network: the ROM asks for its address (BOOTP), which
-# SLiRP answers, and loads its boot file over TFTP.
-run netboot "" '3000 shot a.ppm\n3001 quit\n' 'nMachineType = 0\n[Boot]\nnBootDevice = 2\n[Ethernet]\nbEthernetConnected = TRUE\n'
-check_log netboot "Starting SLIRP" "SLiRP starts"
-check_log netboot "network: first packet from the NeXT" "the NeXT's packets reach SLiRP"
-check_log netboot "network: first packet to the NeXT" "SLiRP's answers reach the NeXT"
-
-echo "A CPU that halts stops, and waits"
-run halt "" '600 quit\n' 'nMachineType = 2\nnCpuLevel = 3\n'
-check_log halt "CPU halted" "the CPU halted"
-if [ "$(grep -c "CPU halted" "$OUT/halt/log.txt")" -le 2 ]; then
-    pass "halt: it halted once, and waited"
+if [ -n "$after2" ] && [ "$after2" -eq "$after1" ]; then
+    pass "zip: a key stops it"
 else
-    fail "halt" "it halted again and again (see out/halt/log.txt)"
+    fail "zip" "the sound went on after the key (${after1:-?} to ${after2:-?})"
 fi
 
-echo "Sound at the NeXT's pitch over the Pi 5's HDMI (48 kHz, 32 ms at a time)"
-# Sound, Test Tone (NeXT's Way): two seconds at 44.1 kHz, made the NeXT's
-# way, must be two seconds at 48 kHz, 96000 frames, neither stretched
-# (lower) nor squeezed (higher). With a buffer too small for the HDMI's
-# transfers it came out stretched.
-TONE_SCRIPT="$(key $F12 300)$(key $DOWN 320)$(key $DOWN 330)$(key $DOWN 340)$(key $DOWN 350)$(key $ENTER 360)$(key $DOWN 380)$(key $DOWN 390)$(key $DOWN 400)420 audio\n$(key $ENTER 430)800 audio\n801 quit\n"
-mkdir -p "$OUT/tone"
-ln -s "$OUT/roms" "$OUT/tone/roms" 2>/dev/null
-(cd "$OUT/tone" && printf "$TONE_SCRIPT" | BMNEXT_SIM_RATE=48000 BMNEXT_SIM_CHUNK=1536 \
-    BMNEXT_CMDLINE="root=." "$SIM" > log.txt 2>&1)
-tone=$(grep "audio written" "$OUT/tone/log.txt" | sed 's/.*sound \([0-9]*\) frames.*/\1/' |
-       awk 'NR == 1 { a = $1 } NR == 2 { print $1 - a }')
-check_log tone "test tone, 440 Hz at 44100 Hz .the NeXT's way." "the tone played the NeXT's way"
-if [ -n "$tone" ] && [ "$tone" -ge 95000 ] && [ "$tone" -le 97000 ]; then
-    pass "tone: 2 s of it is 2 s at 48 kHz ($tone frames)"
+echo "A gamepad: as keys (DOSBox Pure's mapper), and as the PC's joystick"
+# Auto: an unknown program's gamepad is the keyboard (D-pad arrows, A
+# Enter): it chooses JOY.COM in the start menu.
+run padkeys "content=$ZIP" "200 pad 0 $PAD_DOWN\n206 pad 0 0\n220 pad 0 $PAD_A\n226 pad 0 0\n300 quit\n"
+check_log padkeys "Program: JOY" "the D-pad and A chose and ran JOY.COM"
+# PC Joystick 1: A is the joystick's first button, which JOY.COM waits for.
+run joystick "content=$ZIP pad1_type=joystick1" "$(key $DOWN 200)$(key $ENTER 210)380 shot waiting.ppm\n400 pad 0 $PAD_A\n440 pad 0 0\n460 shot pressed.ppm\n461 quit\n"
+check_log joystick "Program: JOY" "JOY.COM runs"
+if [ "$(grep -c "Program: DOSBOX" "$OUT/joystick/log.txt")" -ge 2 ]; then
+    pass "joystick: the button ended JOY.COM"
 else
-    fail "tone" "2 s of sound came out as ${tone:-no} frames at 48 kHz, not 96000"
+    fail "joystick" "JOY.COM never saw the button"
+fi
+differ joystick waiting pressed
+
+echo "The menu: settings saved in bmdos.cfg"
+# Gamepads (the sixth item), Gamepad 1, PC Joystick 1 (the third type).
+run padmenu "content=$ZIP" "$(key $F12 200)$(key $DOWN 205)$(key $DOWN 210)$(key $DOWN 215)$(key $DOWN 220)$(key $DOWN 225)$(key $ENTER 230)$(key $ENTER 240)$(key $DOWN 250)$(key $DOWN 255)$(key $ENTER 260)300 quit\n"
+check_cfg padmenu "^pad1_type=joystick1" "Gamepads > Gamepad 1 > PC Joystick 1"
+# DOSBox Settings (the fifth item), its first category, its first
+# setting, the next value.
+run coremenu "content=$ZIP" "$(key $F12 200)230 shot menu.ppm\n$(key $DOWN 235)$(key $DOWN 240)$(key $DOWN 245)$(key $DOWN 250)$(key $ENTER 260)290 shot settings.ppm\n$(key $ENTER 300)$(key $ENTER 310)$(key $DOWN 320)$(key $ENTER 330)$(key $F12 340)400 quit\n"
+check_cfg coremenu "^dosbox_pure_[a-z0-9_]+=" "a DOSBox Pure setting changed in the menu"
+check_log coremenu "DOSBox Pure settings in [0-9]+ categories" "the core's settings were listed"
+differ coremenu menu settings
+n=$(count coremenu menu 0 0 172)
+if [ "$n" -gt 100000 ]; then
+    pass "coremenu: the menu is on the screen, blue ($n pixels)"
+else
+    fail "coremenu" "the menu isn't on the screen ($n blue pixels)"
+fi
+# DOSBox Pure's Menu and Keyboard (the fourth item): its on-screen menu
+# over the DOS prompt.
+run coremenu2 "" "$(key $ENTER 200)290 shot before.ppm\n$(key $F12 300)$(key $DOWN 310)$(key $DOWN 315)$(key $DOWN 320)$(key $ENTER 330)400 shot after.ppm\n401 quit\n"
+differ coremenu2 before after
+# Restart the PC (the third item): the core starts again.
+run restart "content=$ZIP" "$(key $F12 200)$(key $DOWN 210)$(key $DOWN 215)$(key $ENTER 220)400 quit\n"
+check_log restart "starting the PC again" "Restart the PC"
+if [ "$(grep -c "DOSBox Pure running" "$OUT/restart/log.txt")" -ge 2 ]; then
+    pass "restart: DOSBox Pure ran again"
+else
+    fail "restart" "DOSBox Pure didn't start again"
 fi
 
-echo "No ROM"
-mkdir -p "$OUT/norom"
-(cd "$OUT/norom" && printf '120 quit\n' | BMNEXT_CMDLINE="root=." "$SIM" > log.txt 2>&1)
-check_log norom "No ROM for the NeXT Computer" "says there is no ROM"
+echo "The web UI's Run, and content that isn't there"
+run webrun "" "200 run $ZIP\n500 quit\n"
+check_log webrun "web UI: starting \./dos/bmdostest\.zip" "the web UI's request"
+check_log webrun "starting \./dos/bmdostest\.zip" "the PC starts with it"
+check_cfg webrun "^content=\./dos/bmdostest\.zip" "kept as the content to start with"
+run missing "content=./dos/nothere.zip" "200 quit\n"
+check_log missing "nothere\.zip is not there: starting without it" "says so and starts without it"
 
-echo "Web UI requests"
-run reboot "" '1200 webui reboot\n1260 quit\n'
+echo "Sound at the Pi 4 and 5's HDMI rate (48 kHz)"
+mkdir -p "$OUT/rate48"
+(cd "$OUT/rate48" && printf '200 quit\n' | BMDOS_SIM_RATE=48000 BMDOS_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+check_log rate48 "DOSBox Pure running: .* sound 48000 Hz" "the core makes its sound at 48 kHz"
+
+echo "A display without 32-bit colour (RGB565)"
+mkdir -p "$OUT/rgb565"
+(cd "$OUT/rgb565" && printf '250 shot menu.ppm\n251 quit\n' | BMDOS_SIM_NO32=1 BMDOS_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+if [ -f "$OUT/rgb565/menu.ppm" ] && [ "$(count rgb565 menu 0 0 0)" -lt 200000 ]; then
+    pass "rgb565: the start menu drawn in RGB565"
+else
+    fail "rgb565" "no picture in RGB565"
+fi
+
+echo "A USB stick with the content on it, pulled out"
+mkdir -p "$OUT/usb/usb"
+cp "$OUT/zips/bmdostest.zip" "$OUT/usb/usb/"
+(cd "$OUT/usb" && printf '200 usb 1 0\n400 quit\n' | BMDOS_USB=1 \
+    BMDOS_CMDLINE="root=. content=usb/bmdostest.zip" "$SIM" > log.txt 2>&1)
+check_log usb "starting usb/bmdostest\.zip" "started from the stick"
+check_log usb "USB stick 1 out: the PC's content was on it" "the stick pulled out is noticed"
+check_log usb "usb/bmdostest\.zip was on the USB stick pulled out: starting without it" "the PC starts again without it"
+
+echo "Web UI requests and the power key"
+run reboot "" '200 webui reboot\n260 quit\n'
 check_log reboot "reboot requested" "reboots"
-run coldstart "" '1200 webui coldstart\n1260 quit\n'
-check_log coldstart "Web UI: restart" "restarts the NeXT"
-
-echo "The power key (Pi 400: Fn+F10) shuts down"
-run powerkey "" "$(key $POWER 1200)1260 quit\n"
+run coldstart "" '200 webui coldstart\n400 quit\n'
+check_log coldstart "web UI: restart" "restarts the PC"
+run powerkey "" "$(key $POWER 200)260 quit\n"
 check_log powerkey "power off requested" "the power key powers off"
+
+if [ -n "${BMDOS_GAME:-}" ]; then
+    echo "A game: $BMDOS_GAME"
+    mkdir -p "$OUT/game/dos"
+    cp "$BMDOS_GAME" "$OUT/game/dos/game.zip"
+    (cd "$OUT/game" && printf "$(key $ENTER 200)900 shot shot\n901 audio\n902 quit\n" | \
+        BMDOS_CMDLINE="root=. content=./dos/game.zip" "$SIM" > log.txt 2>&1)
+    check_log game "starting \./dos/game\.zip" "the game's ZIP is the content"
+    check_no_log game "audio underrun \\(" "no sound underruns"
+    echo "      (its screen: out/game/shot.ppm)"
+fi
 
 echo
 if [ $FAILED -eq 0 ]; then

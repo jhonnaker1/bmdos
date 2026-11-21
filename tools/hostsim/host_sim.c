@@ -1,10 +1,10 @@
 /*
- * host_sim.c - runs the BMNeXT emulator port on a PC for testing.
+ * host_sim.c - runs the BMDOS emulator port on a PC for testing.
  *
  * Implements src/host.h with a simulated display, sound output and input,
- * so Previous and the port in src/port/ can be tested without a Raspberry Pi.
+ * so DOSBox Pure and the port in src/port/ can be tested without a Raspberry Pi.
  * Time is virtual: each display refresh advances the clock by one frame of
- * a 60 Hz (or BMNEXT_REFRESH Hz) display, so tests run as fast as the PC
+ * a 60 Hz (or BMDOS_REFRESH Hz) display, so tests run as fast as the PC
  * allows.
  *
  * A script on standard input drives the test, one command per line:
@@ -23,22 +23,20 @@
  *   <frame> run <path>             the web UI starts a file
  *   <frame> quit                   end the test
  *
- * BMNEXT_SIM_CONNECT_FRAMES=N makes background work (the modem's
+ * BMDOS_SIM_CONNECT_FRAMES=N makes background work (the modem's
  * connecting) start N frames late, as a slow server would on the Pi.
  *
- * BMNEXT_SIM_RATE=48000 plays the sound at the Pi 4 and 5's HDMI rate
+ * BMDOS_SIM_RATE=48000 plays the sound at the Pi 4 and 5's HDMI rate
  * (the latency asked for is taken at 44.1 kHz, as there).
  *
- * BMNEXT_SIM_HELPER=1 gives it a helper core (src/host.h), a thread, as the
- * Pi 5 has: the NeXTdimension's i860 then runs on it, as there, and not
- * in step with the emulator's virtual time. Without it the i860 runs on
- * the emulator's thread, and tests come out the same every time.
+ * BMDOS_SIM_HELPER=1 gives it a helper core (src/host.h), a thread, as the
+ * Pi 5 has (BMDOS doesn't use it yet).
  *
- * With BMNEXT_LIVE=PORT it runs in real time instead, with no script: the
+ * With BMDOS_LIVE=PORT it runs in real time instead, with no script: the
  * screen, keyboard, gamepads and sound are in a web page at
  * http://127.0.0.1:PORT/ (live.c, live.html). tools/hostsim/live.sh starts it.
  *
- * This file is part of BMNeXT, a bare metal NeXT emulator for
+ * This file is part of BMDOS, a bare metal MS-DOS PC emulator for
  * the Raspberry Pi. See LICENSE for licensing details.
  */
 
@@ -58,8 +56,8 @@
 #include "live.h"
 
 /* From src/port/platform.c, called by the web UI on the Pi. */
-void bmnext_request_power(int power_off);
-void bmnext_request_coldstart(void);
+void bmdos_request_power(int power_off);
+void bmdos_request_coldstart(void);
 void emu_autostart_interrupt(const char *path);
 
 /* ---- Options ---------------------------------------------------------------- */
@@ -67,7 +65,7 @@ void emu_autostart_interrupt(const char *path);
 static const char *option(const char *name)
 {
 	static char buf[1024];
-	const char *cmdline = getenv("BMNEXT_CMDLINE");
+	const char *cmdline = getenv("BMDOS_CMDLINE");
 	char *p, *save = NULL;
 	size_t n = strlen(name);
 	if (cmdline == NULL)
@@ -80,9 +78,9 @@ static const char *option(const char *name)
 	return NULL;
 }
 
-/* Settings changed by the menu, which win over BMNEXT_CMDLINE, as
-   bmnext.cfg does on the Pi. Saved to ./bmnext.cfg. */
-static char set_name[48][24], set_value[48][72];
+/* Settings changed by the menu, which win over BMDOS_CMDLINE, as
+   bmdos.cfg does on the Pi. Saved to ./bmdos.cfg. */
+static char set_name[128][48], set_value[128][520];
 static int n_set;
 
 int host_option_set(const char *name, const char *value)
@@ -92,7 +90,7 @@ int host_option_set(const char *name, const char *value)
 		if (strcmp(set_name[i], name) == 0)
 			break;
 	if (i == n_set) {
-		if (n_set == 48)
+		if (n_set == 128)
 			return 0;
 		snprintf(set_name[n_set++], sizeof(set_name[0]), "%s", name);
 	}
@@ -102,7 +100,7 @@ int host_option_set(const char *name, const char *value)
 
 int host_options_save(void)
 {
-	FILE *f = fopen("bmnext.cfg", "w");
+	FILE *f = fopen("bmdos.cfg", "w");
 	int i;
 	if (f == NULL)
 		return 0;
@@ -118,12 +116,12 @@ const char *host_option(const char *name, const char *default_value)
 	for (i = 0; i < n_set; i++)
 		if (strcmp(set_name[i], name) == 0)
 			v = set_value[i];
-	static char ret[8][256];
+	static char ret[8][520];
 	static int slot;
 	if (v == NULL)
 		return default_value;
 	slot = (slot + 1) % 8;
-	strncpy(ret[slot], v, 255);
+	strncpy(ret[slot], v, 519);
 	return ret[slot];
 }
 
@@ -145,7 +143,7 @@ static double now = 0.0;
 static double refresh = 60.0;
 static double refresh_later = 0.0;  /* refresh rate after start up */
 static volatile long frame = 0;
-static long connect_frames = 0;  /* BMNEXT_SIM_CONNECT_FRAMES */
+static long connect_frames = 0;  /* BMDOS_SIM_CONNECT_FRAMES */
 static long presents = 0;
 
 static void tick(void);
@@ -200,7 +198,7 @@ void host_yield(void)
 		now += 1e-7;
 }
 
-/* ---- The helper core: a thread (BMNEXT_SIM_HELPER=1) ------------------------- */
+/* ---- The helper core: a thread (BMDOS_SIM_HELPER=1) ------------------------- */
 
 static pthread_t helper_thread;
 static void (*helper_task)(void *);
@@ -210,7 +208,7 @@ static __thread int on_helper;   /* set on the helper's thread */
 
 int host_helper_available(void)
 {
-	const char *e = getenv("BMNEXT_SIM_HELPER");
+	const char *e = getenv("BMDOS_SIM_HELPER");
 	return e != NULL && atoi(e) != 0;
 }
 
@@ -256,7 +254,7 @@ void host_helper_sleep_us(unsigned us)
 
 /* ---- Sound ---------------------------------------------------------------- */
 
-/* The output's rate: the VideoCore's 44100 Hz, or BMNEXT_SIM_RATE (48000
+/* The output's rate: the VideoCore's 44100 Hz, or BMDOS_SIM_RATE (48000
    for the Pi 4 and 5's HDMI, which take the latency at 44100 Hz). */
 static unsigned hw_rate = 44100;
 #define HW_RATE hw_rate
@@ -268,7 +266,10 @@ static double snd_last = 0.0;
 static long snd_written = 0, snd_underruns = 0, snd_writes = 0, snd_nonzero = 0;
 /* Frames written that weren't silence (in writes with sound in them). */
 static long snd_sound = 0;
-/* BMNEXT_SIM_CHUNK: the output takes this many frames at a time, as the
+/* Frames written in writes that swing by more than 2000 (a tone, not a
+   steady level, which a PC speaker left on is). */
+static long snd_tone = 0;
+/* BMDOS_SIM_CHUNK: the output takes this many frames at a time, as the
    Pi 5's HDMI does (1536), rather than smoothly; 0: smoothly. */
 static unsigned snd_chunk = 0;
 static double snd_chunk_due = 0;   /* frames of play until the next take */
@@ -308,9 +309,9 @@ static void sound_advance(void)
 
 unsigned host_sound_open(unsigned freq, int channels, unsigned latency_frames)
 {
-	const char *rate = getenv("BMNEXT_SIM_RATE");
+	const char *rate = getenv("BMDOS_SIM_RATE");
 	(void) freq;
-	const char *chunk = getenv("BMNEXT_SIM_CHUNK");
+	const char *chunk = getenv("BMDOS_SIM_CHUNK");
 	if (rate != NULL && atoi(rate) >= 8000)
 		hw_rate = (unsigned) atoi(rate);
 	if (chunk != NULL && atoi(chunk) > 0)
@@ -362,6 +363,15 @@ void host_sound_write(const int16_t *samples, unsigned frames)
 			snd_sound += frames;
 			break;
 		}
+	{
+		int lo = 32767, hi = -32768;
+		for (i = 0; i < frames * snd_channels; i++) {
+			if (samples[i] < lo) lo = samples[i];
+			if (samples[i] > hi) hi = samples[i];
+		}
+		if (hi - lo > 2000)
+			snd_tone += frames;
+	}
 	if (snd_written > HW_RATE * 2) {
 		if (snd_buffered < snd_min_fill) snd_min_fill = snd_buffered;
 	}
@@ -390,14 +400,14 @@ int host_video_init(int width, int height, uint16_t **pixels, int *pitch)
 	return 0;
 }
 
-/* The 32-bit frame buffer, and which one is shown. BMNEXT_SIM_NO32=1:
+/* The 32-bit frame buffer, and which one is shown. BMDOS_SIM_NO32=1:
    none, as on a display that can't show it. */
 static uint32_t *fb32;
 static int depth = 16;
 
 uint32_t *host_video_init32(int *pitch)
 {
-	const char *no32 = getenv("BMNEXT_SIM_NO32");
+	const char *no32 = getenv("BMDOS_SIM_NO32");
 	if (fb == NULL || (no32 != NULL && *no32 == '1'))
 		return NULL;
 	if (fb32 == NULL)
@@ -501,7 +511,7 @@ int host_pad_axis(int pad, int axis)
 int host_gpio_joystick(int port) { return port >= 0 && port < 2 ? gpio[port] : 0; }
 
 /* The USB sticks are the folders usb/, usb2/ and usb3/ in the test's
-   directory. BMNEXT_USB=N has the first N plugged in from the start; the
+   directory. BMDOS_USB=N has the first N plugged in from the start; the
    script's "usb" command plugs one in or pulls it out (from BMA800XL). */
 static unsigned usb_stick[HOST_USB_STICKS];
 static unsigned usb_sticks;
@@ -509,7 +519,7 @@ static int usb_started;
 
 static void usb_start(void)
 {
-	const char *env = getenv("BMNEXT_USB");
+	const char *env = getenv("BMDOS_USB");
 	int n, count = env ? atoi(env) : 0;
 	if (usb_started)
 		return;
@@ -681,15 +691,15 @@ static void run_script(void)
 			screenshot(line + n + 1);
 		} else if (strcmp(cmd, "webui") == 0) {
 			if (strstr(line + n, "reboot"))
-				bmnext_request_power(0);
+				bmdos_request_power(0);
 			else if (strstr(line + n, "coldstart"))
-				bmnext_request_coldstart();
+				bmdos_request_coldstart();
 		} else if (strcmp(cmd, "audio") == 0) {
 			fprintf(stderr, "[sim] frame %ld: audio written %ld frames in %ld writes, "
 			        "queue before write min %.0f, after write max %.0f, underruns %ld, "
-			        "changing samples %ld, sound %ld frames\n",
+			        "changing samples %ld, sound %ld frames, tone %ld frames\n",
 			        frame, snd_written, snd_writes, snd_min_fill, snd_max_fill, snd_underruns,
-			        snd_nonzero, snd_sound);
+			        snd_nonzero, snd_sound, snd_tone);
 			fprintf(stderr, "[sim] frame %ld: %ld frames presented\n", frame, presents);
 		} else if (strcmp(cmd, "quit") == 0) {
 			fprintf(stderr, "[sim] quit at frame %ld (%.2f s)\n", frame, now);
@@ -760,7 +770,7 @@ void host_power_off(void)
 
 int host_network_address(char *address, unsigned size)
 {
-	const char *ip = getenv("BMNEXT_IP");
+	const char *ip = getenv("BMDOS_IP");
 	if (ip == NULL || frame < 100)
 		return 0;
 	snprintf(address, size, "%s", ip);
@@ -876,11 +886,11 @@ void host_udp_close(int handle)
 		close(handle);
 }
 
-/* The DNS server: BMNEXT_DNS, or the PC's own (/etc/resolv.conf). */
+/* The DNS server: BMDOS_DNS, or the PC's own (/etc/resolv.conf). */
 int host_dns_server(uint32_t *ip)
 {
 	char line[256], addr[64];
-	const char *env = getenv("BMNEXT_DNS");
+	const char *env = getenv("BMDOS_DNS");
 	FILE *f;
 	struct in_addr a;
 	if (env != NULL)
@@ -924,7 +934,7 @@ void host_network_status(char *text, unsigned size)
 		snprintf(text, size, "Off");
 }
 
-/* BMNEXT_WIFI=1 pretends Wi-Fi is running, with a few networks around. */
+/* BMDOS_WIFI=1 pretends Wi-Fi is running, with a few networks around. */
 int host_wifi_scan(struct host_wifi_ap *aps, int max)
 {
 	static const struct host_wifi_ap found[] = {
@@ -934,7 +944,7 @@ int host_wifi_scan(struct host_wifi_ap *aps, int max)
 		{"AppleNet", -60, 0},
 	};
 	int i, n = (int) (sizeof(found) / sizeof(found[0]));
-	if (getenv("BMNEXT_WIFI") == NULL)
+	if (getenv("BMDOS_WIFI") == NULL)
 		return -1;
 	for (i = 0; i < n && i < max; i++)
 		aps[i] = found[i];
@@ -983,7 +993,7 @@ int host_set_log_destination(int destination)
 	return 1;
 }
 
-extern void bmnext_main(void);
+extern void bmdos_main(void);
 
 /* For live.c */
 void sim_push_key(int usage, int pressed)
@@ -1010,21 +1020,21 @@ const uint16_t *sim_screen(int *w, int *h, int *pitch)
 
 int main(void)
 {
-	const char *r = getenv("BMNEXT_LIVE");
+	const char *r = getenv("BMDOS_LIVE");
 	if (r) {
 		live = 1;
 		if (!live_init(atoi(r)))
 			return 1;
 	}
-	r = getenv("BMNEXT_REFRESH");
+	r = getenv("BMDOS_REFRESH");
 	if (r)
 		refresh = atof(r);
-	r = getenv("BMNEXT_SIM_CONNECT_FRAMES");
+	r = getenv("BMDOS_SIM_CONNECT_FRAMES");
 	if (r)
 		connect_frames = atol(r);
-	r = getenv("BMNEXT_REFRESH_LATER");
+	r = getenv("BMDOS_REFRESH_LATER");
 	if (r)
 		refresh_later = atof(r);
-	bmnext_main();
+	bmdos_main();
 	return 0;
 }

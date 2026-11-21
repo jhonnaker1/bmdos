@@ -10,7 +10,7 @@ build/
 .board
 
 # Release archives
-bmnext-*.zip
+bmdos-*.zip
 
 # PC test harness
 tools/hostsim/build/

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Builds the third party libraries (circle-stdlib: Circle and newlib, and the
-# Circle addons) and then the BMNeXT kernel for one board:
+# Circle addons) and then the BMDOS kernel for one board:
 #
 #   ./make_all.sh [pi0|pi2|pi3|pi4|pi5] [--skip-patches]
 #
@@ -55,20 +55,20 @@ case "$RASPI" in
 esac
 if [ "$RASPI" -ge 4 ]
 then
-    export BMNEXT_AARCH=64
+    export BMDOS_AARCH=64
     CONFIGURE_PREFIX=(-p aarch64-none-elf-)
 else
-    export BMNEXT_AARCH=32
+    export BMDOS_AARCH=32
     CONFIGURE_PREFIX=()
 fi
 
 if [ ! -f "$SRC_DIR/sdcard/config.txt" ]
 then
-    echo "Must be run from the BMNeXT root directory." >&2
+    echo "Must be run from the BMDOS root directory." >&2
     exit 1
 fi
 
-# newlib only uses makeinfo for its manuals, which BMNeXT doesn't need.
+# newlib only uses makeinfo for its manuals, which BMDOS doesn't need.
 # Without it, a stand-in writes empty ones.
 if ! command -v makeinfo >/dev/null 2>&1
 then
@@ -131,10 +131,10 @@ then
     nproc() { sysctl -n hw.ncpu; }
 fi
 
-if [ ! -f "$CIRCLE_HOME/Rules.mk" ] || [ ! -f "$SRC_DIR/third_party/zlib/zlib.h" ]
+if [ ! -f "$CIRCLE_HOME/Rules.mk" ] || [ ! -f "$SRC_DIR/third_party/dosbox-pure/dosbox_pure_libretro.cpp" ]
 then
     echo "Fetching submodules..."
-    git -C "$SRC_DIR" submodule update --init third_party/zlib third_party/circle-stdlib
+    git -C "$SRC_DIR" submodule update --init third_party/dosbox-pure third_party/circle-stdlib
     git -C "$CIRCLE_STDLIB" submodule update --init libs/circle libs/circle-newlib
     git -C "$CIRCLE_HOME" submodule update --init addon/wlan/hostap
 fi
@@ -170,7 +170,7 @@ echo "BUILD CIRCLE-STDLIB for Raspberry Pi $RASPI"
 echo "=============================================================="
 cd "$CIRCLE_STDLIB"
 find . -name config.cache -delete
-bash ./configure --raspberrypi=$RASPI --kernel-max-size 48 "${CONFIGURE_PREFIX[@]}"
+bash ./configure --raspberrypi=$RASPI --kernel-max-size 64 "${CONFIGURE_PREFIX[@]}"
 make -C libs/circle clean >/dev/null 2>&1 || true
 make -j"$(nproc)"
 

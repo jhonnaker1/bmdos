@@ -1,6 +1,6 @@
 // File access on the SD card, for the code from BMC64: the web UI, the log
 // file and the Wi-Fi checks. Paths are absolute on the card
-// ("/bmnext.cfg"); the card's volume is added here. A path that names its
+// ("/bmdos.cfg"); the card's volume is added here. A path that names its
 // own volume ("USB:/disks/x.dmg", a USB stick) is used as it is (BMA800XL).
 //
 // sd_fs_fatfs.c implements this on the Pi with FatFs; tools/sdcard/

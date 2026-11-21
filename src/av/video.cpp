@@ -3,7 +3,7 @@
 //
 // See video.h for what this is and the sources it follows.
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
@@ -146,7 +146,7 @@ bool Pi4Video::Initialize(bool crt, bool smooth, bool curvature, Driver driver) 
   m_bFiltered = crt || smooth;
   bool ok;
   if (!m_bFiltered) {
-    // Sharp pixels: RGB565, what BMNeXT draws (so lines are copied as
+    // Sharp pixels: RGB565, what BMDOS draws (so lines are copied as
     // they are), the size of the display; 32-bit is the fall back if the
     // firmware refuses it.
     static const unsigned depths[] = {16, 32};
@@ -201,7 +201,7 @@ bool Pi4Video::Initialize(bool crt, bool smooth, bool curvature, Driver driver) 
     } else {
       // Sharp and smooth are scaled by the HVS; the CRT shader is drawn by
       // the ARM at up to 1080 lines and scaled the rest of the way.
-      CLogger::Get()->Write(FromVideo, LogNotice, "Picture by BMNeXT's display lists on the HVS");
+      CLogger::Get()->Write(FromVideo, LogNotice, "Picture by BMDOS's display lists on the HVS");
     }
   }
   FlushStartupLog();
@@ -693,7 +693,7 @@ bool Pi4Video::KmsShows(unsigned buffer) {
 
 void Pi4Video::PresentKms(bool wait_vsync) {
   // The sharp picture, when the one on the screen is the view as it is
-  // now: nothing to draw or show (a big picture, the NeXT's 1120x832, a
+  // now: nothing to draw or show (a big picture, SVGA's 1280x1024, a
   // million pixels, would otherwise be converted and written out sixty
   // times a second). Waits for the vertical blank are still waited for.
   if (!m_bCrt && !wait_vsync && KmsShows(m_pKms->BackBuffer() ^ 1)) {

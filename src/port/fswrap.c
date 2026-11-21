@@ -7,17 +7,18 @@
  * first; the root (and ".") are reported as directories, everything else
  * goes to the real stat().
  *
- * Previous makes the disk and ROM paths it loads from previous.cfg
- * absolute (configuration.c, File_MakeAbsoluteName() in file.c), putting
- * the current folder ("SD:/") in front of any that doesn't start with "/".
- * A USB stick's path ("USB:/disks/x.img") names its own volume, and would
- * become "SD:/USB:/disks/x.img": with --wrap=File_MakeAbsoluteName such a
- * path is left as it is.
+ * readdir() (--wrap=readdir) gives a dirent with d_type after newlib's
+ * (src/port/circle/include/sys/dirent.h, which DOSBox Pure is built with:
+ * it reads d_type), set to DT_UNKNOWN, so that DOSBox asks stat() whether
+ * an entry is a folder. It also leaves out the Mac's files: "._" ones
+ * (macOS keeps a file's extended attributes in them on FAT32) and
+ * .DS_Store (from BMAmiga).
  *
- * This file is part of BMNeXT, a bare metal NeXT emulator for
- * the Raspberry Pi. See LICENSE for licensing details.
+ * This file is part of BMDOS, a bare metal MS-DOS PC emulator
+ * for the Raspberry Pi. See LICENSE for licensing details.
  */
 
+#include <dirent.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -45,15 +46,27 @@ int __wrap_stat(const char *path, struct stat *st)
 	return __real_stat(path, st);
 }
 
-void __real_File_MakeAbsoluteName(char *path);
+struct dirent *__real_readdir(DIR *dir);
 
-void __wrap_File_MakeAbsoluteName(char *path)
+/* newlib's entry with d_type after it (sys/dirent.h in src/port/circle). */
+static struct {
+	struct dirent entry;
+	unsigned char d_type;
+} with_type;
+
+static int is_mac_file(const char *name)
 {
-	const char *p = path;
-	/* A volume's name ("USB:", "USB2:"), letters and digits, then ":/". */
-	while ((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') || (*p >= '0' && *p <= '9'))
-		p++;
-	if (p != path && p[0] == ':' && p[1] == '/')
-		return;
-	__real_File_MakeAbsoluteName(path);
+	return (name[0] == '.' && name[1] == '_' && name[2] != '\0') || strcmp(name, ".DS_Store") == 0;
+}
+
+struct dirent *__wrap_readdir(DIR *dir)
+{
+	struct dirent *entry;
+	while ((entry = __real_readdir(dir)) != NULL && is_mac_file(entry->d_name))
+		;
+	if (entry == NULL)
+		return NULL;
+	with_type.entry = *entry;
+	with_type.d_type = 0;   /* DT_UNKNOWN */
+	return &with_type.entry;
 }

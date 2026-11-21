@@ -1,5 +1,5 @@
 // Overlay text editor for the device's config files (cmdline.txt,
-// config.txt, previous.cfg, bmnext.cfg, wpa_supplicant.conf), which the device decides:
+// config.txt, bmdos.cfg, wpa_supplicant.conf), which the device decides:
 // the file list marks them "edit".
 
 import { $, normPath } from "./util.js";
@@ -8,7 +8,7 @@ import { rebootNow } from "./dashboard.js";
 
 // Files the emulator's own menus also write; a menu save overwrites edits
 // made here until the next reboot.
-const MENU_WRITTEN = /^bmnext\.cfg$/i;
+const MENU_WRITTEN = /^bmdos\.cfg$/i;
 
 // The open editor, or null. Holds everything about the file being edited.
 let session = null;
@@ -38,7 +38,7 @@ function refreshButtons() {
 
 function hintFor(name) {
   let text = "Changes take effect after a reboot. A mistake in a system " +
-    "file can stop BMNeXT starting; the previous version is kept as " +
+    "file can stop BMDOS starting; the previous version is kept as " +
     name + ".bak.";
   if (MENU_WRITTEN.test(name)) {
     text += " Saving from the emulator's menus before you reboot " +
@@ -102,7 +102,7 @@ async function save(andReboot) {
   const s = session;
   if (!canSave()) return;
   if (andReboot && !confirm(
-      "Save " + s.name + " and reboot BMNeXT now?\n\n" +
+      "Save " + s.name + " and reboot BMDOS now?\n\n" +
       "Any unsaved emulator state will be lost.")) return;
 
   s.busy = true;

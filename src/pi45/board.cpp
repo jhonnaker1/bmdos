@@ -26,10 +26,10 @@
 //    0x7D508500); Circle, include/circle/bcm2712.h (ARM_GPIO1_DATA0, the
 //    first bank's levels).
 //
-// Modified for BMA800XL, and BMNeXT, from BMC64's src/pi45/board.cpp: only
+// Modified for BMA800XL, and BMDOS, from BMC64's src/pi45/board.cpp: only
 // Pi45BoardPoll's Pi 5 power button and fan kept (the sources of the
-// removed parts dropped from the list above); it calls BMNeXT's
-// bmnext_request_power instead of emu_power_interrupt and logs "Shut Down".
+// removed parts dropped from the list above); it calls BMDOS's
+// bmdos_request_power instead of emu_power_interrupt and logs "Shut Down".
 //
 
 #include "board.h"
@@ -43,7 +43,7 @@
 #include <circle/timer.h>
 
 // From src/port/platform.c: the emulator's Reboot / Shut Down request.
-extern "C" void bmnext_request_power(int power_off);
+extern "C" void bmdos_request_power(int power_off);
 
 static const char FromBoard[] = "board";
 
@@ -70,7 +70,7 @@ void Pi45BoardPoll(void) {
     down_since = now | 1;
   } else if (now - down_since >= CLOCKHZ / 20) {
     CLogger::Get()->Write(FromBoard, LogNotice, "Power button: Shut Down");
-    bmnext_request_power(1);
+    bmdos_request_power(1);
     seen_up = false;
   }
 }

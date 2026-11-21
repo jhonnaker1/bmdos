@@ -1,12 +1,12 @@
 /*
  * live.h - the host simulator's live mode (see live.c).
  *
- * This file is part of BMNeXT, a bare metal NeXT emulator for
+ * This file is part of BMDOS, a bare metal MS-DOS PC emulator for
  * the Raspberry Pi. See LICENSE for licensing details.
  */
 
-#ifndef BMNEXT_LIVE_H_
-#define BMNEXT_LIVE_H_
+#ifndef BMDOS_LIVE_H_
+#define BMDOS_LIVE_H_
 
 #include <stdint.h>
 

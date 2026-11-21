@@ -1,0 +1,46 @@
+DOSBox Pure
+===========
+
+BMDOS's PC emulation is DOSBox Pure (https://codeberg.org/schelling/dosbox-pure),
+by Bernhard Schelling, a fork of DOSBox by the DOSBox Team, built as its
+libretro core and used unmodified (third_party/dosbox-pure in BMDOS's
+source). Its notice:
+
+  Copyright (C) 2020-2026 Bernhard Schelling
+  Copyright (C) 2002-2021 The DOSBox Team
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+The GNU General Public License version 2 is GPL-2.0.txt in this folder.
+BMDOS as a whole is under version 3 (LICENSE.txt), which "or any later
+version" allows.
+
+Parts of DOSBox Pure under other licences, each in its own files:
+
+  Nuked OPL3 (src/hardware/nukedopl3.*), by Nuke.YKT, with Tony Gies's
+    changes: GNU Lesser General Public License version 2.1 or later
+    (LGPL-2.1.txt).
+  mt32emu (src/gui/mt32emu.h), the Munt project's MT-32 emulation:
+    GNU Lesser General Public License version 2.1 or later.
+  Nuked SC-55 (src/hardware/nukedsc55.cpp), by nukeykt: GPL version 2
+    or later.
+  The SN76496 and SAA1099 sound chips (src/hardware/mame/), from MAME,
+    by Nicola Salmoria and others: BSD 3-Clause licence.
+  TinySoundFont (src/gui/tsf.h), by Bernhard Schelling, based on SFZero
+    by Steve Folta: MIT licence.
+  SIMDe's MMX functions (src/cpu/core_dynrec/simde_x86_mmx.h): MIT
+    licence.
+  miniz (in src/dos/drive_zip.cpp), by Rich Geldreich: public domain.
+  libretro-common (libretro-common/), by the libretro team: MIT licence.
+
+Each file's own notice, in the source, is the full text of its terms.
+BMDOS ships no DOS, no ROMs and no games: DOSBox Pure has its own DOS.
+MT-32 and SC-55 emulation, and MIDI sound fonts, need files you supply.

@@ -8,12 +8,12 @@
 // Sources: the BCM2712 device tree (addresses) and the behaviour of the
 // Linux vc4 display driver (registers, fields and values).
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_KMS_PI5_REGS_H_
-#define BMNEXT_KMS_PI5_REGS_H_
+#ifndef BMDOS_KMS_PI5_REGS_H_
+#define BMDOS_KMS_PI5_REGS_H_
 
 #include <stdint.h>
 

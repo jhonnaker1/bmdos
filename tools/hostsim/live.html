@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BMNeXT Live</title>
+<title>BMDOS Live</title>
 <style>
   :root {
     --bg: #101010;
@@ -84,7 +84,7 @@
 </style>
 </head>
 <body>
-<h1>BMNeXT <span>live in the host simulator</span></h1>
+<h1>BMDOS <span>live in the host simulator</span></h1>
 <div id="screen-wrap" tabindex="0">
   <canvas id="screen" width="640" height="240"></canvas>
   <div id="click">Click here to start (keyboard and sound)</div>
@@ -96,12 +96,12 @@
   <button id="sound">Sound: off</button>
 </div>
 <div id="status">Connecting...</div>
-<div id="help">Type straight into the screen once it has focus: the keys go to the NeXT where they are on its keyboard (Windows or Cmd is Command, Alt is Alternate, F10 is Power). F12 opens the menu: disks, the machine, its ROM, memory and boot device. Click the screen to use the mouse as the NeXT's (Esc lets it go). A gamepad's Home button opens the menu.</div>
+<div id="help">Type straight into the screen once it has focus: the keys go to the PC. F12 opens BMDOS's menu: what to run, DOSBox Pure's settings, the gamepads. Click the screen to use the mouse as the PC's (Esc lets it go). A gamepad's Home button opens the menu.</div>
 
 <script>
 "use strict";
 
-// KeyboardEvent.code to USB HID usage, which BMNeXT takes.
+// KeyboardEvent.code to USB HID usage, which BMDOS takes.
 const USAGE = {
   Enter: 0x28, Escape: 0x29, Backspace: 0x2a, Tab: 0x2b, Space: 0x2c,
   Minus: 0x2d, Equal: 0x2e, BracketLeft: 0x2f, BracketRight: 0x30,
@@ -166,7 +166,7 @@ document.querySelectorAll("button[data-key]").forEach((b) => {
 
 // ---- Mouse ----
 // Clicking the screen captures the mouse (Esc lets it go): its movements
-// are the NeXT mouse's, sent at most once a frame.
+// are the PC mouse's, sent at most once a frame.
 let mouseDx = 0, mouseDy = 0, mouseButtons = 0, mouseDirty = false;
 const locked = () => document.pointerLockElement === canvas;
 canvas.addEventListener("click", () => {

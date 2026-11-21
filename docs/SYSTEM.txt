@@ -1,0 +1,23 @@
+DOSBox Pure's system folder
+===========================
+
+DOSBox Pure looks in this folder (and folders inside it) for files of its
+own. None come with BMDOS; all are optional.
+
+  Operating systems to boot instead of DOSBox's own DOS: hard disk images
+  (.img, .ima or .vhd, 7 MB or bigger), with Windows 9x or MS-DOS, PC DOS
+  or FreeDOS installed. DOSBox Pure's start menu offers them ("Boot an
+  operating system") once they are here.
+
+  MIDI music:
+    a General MIDI sound font (.sf2), for DOSBox Pure's own synthesizer;
+    the Roland MT-32's ROMs (a *_CONTROL.ROM file with its *_PCM.ROM);
+    the Roland SC-55's ROMs (ROM1.BIN and the files with it).
+  The MT-32's and SC-55's ROMs are Roland's: your own copies only. Choose
+  which one plays in BMDOS's menu: F12, DOSBox Settings, Audio.
+
+  .dosz files: ZIPs whose files are added to DOSBox's own Z: drive, for
+  tools to have at hand with every program.
+
+See DOSBox Pure's documentation (https://codeberg.org/schelling/dosbox-pure)
+for the details.

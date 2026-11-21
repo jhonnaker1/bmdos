@@ -1,5 +1,5 @@
 #
-# Makefile for the BMNeXT kernel image.
+# Makefile for the BMDOS kernel image.
 #
 # Run ./make_all.sh once first; it builds circle-stdlib and then this.
 # After that "make" rebuilds the kernel image for the board circle-stdlib is
@@ -20,33 +20,24 @@ include third_party/circle-stdlib/Config.mk
 # pick the board's display and sound code.
 include $(CIRCLEHOME)/Config.mk
 
-BMNEXT_VERSION ?= $(shell tools/version.sh --semver)
-BMNEXT_GIT ?= $(shell tools/version.sh --git)
-PREVIOUS := third_party/previous/src
-ZLIB := third_party/zlib
-# "r1858": Previous's Subversion revision (tools/update_previous.sh).
-PREVIOUS_VERSION := r$(shell cat third_party/previous/SVN_REVISION 2>/dev/null || echo unknown)
+BMDOS_VERSION ?= $(shell tools/version.sh --semver)
+BMDOS_GIT ?= $(shell tools/version.sh --git)
+DBP := third_party/dosbox-pure
 
-include src/port/previous.mk
+include src/port/dosbox.mk
 
 BUILD := build
-GEN := $(BUILD)/gen
-PREVIOUS_OBJS := $(addprefix $(BUILD)/previous/,$(PREVIOUS_CORE_SRCS:.c=.o)) \
-                 $(addprefix $(BUILD)/previous/,$(PREVIOUS_CXX_SRCS:.cpp=.o)) \
-                 $(addprefix $(BUILD)/previous/cpu/,$(PREVIOUS_CPU_SRCS:.c=.o)) \
-                 $(addprefix $(GEN)/,$(PREVIOUS_CPUGEN_SRCS:.c=.o) $(PREVIOUS_CPUDEFS_SRC:.c=.o)) \
-                 $(addprefix $(BUILD)/previous/softfloat/,$(PREVIOUS_SOFTFLOAT_SRCS:.c=.o)) \
-                 $(addprefix $(BUILD)/previous/dsp/,$(PREVIOUS_DSP_SRCS:.c=.o)) \
-                 $(addprefix $(BUILD)/previous/debug/,$(PREVIOUS_DEBUG_SRCS:.c=.o)) \
-                 $(addprefix $(BUILD)/previous/slirp/,$(PREVIOUS_SLIRP_SRCS:.c=.o)) \
-                 $(addprefix $(BUILD)/zlib/,$(ZLIB_SRCS:.c=.o))
-PREVIOUS_LIB := $(BUILD)/libprevious.a
+DBP_OBJS := $(addprefix $(BUILD)/dbp/,$(DBP_SRCS_REL:.cpp=.o))
+DBP_LIB := $(BUILD)/libdosboxpure.a
+# BMDOS's Circle layer for the core: cooperative threads on libco, and the
+# POSIX functions newlib lacks (src/port/circle/README.md).
+CIRCLE_PORT_OBJS := $(BUILD)/port/threads.o $(BUILD)/port/posix.o $(BUILD)/port/libco.o
+CIRCLE_PORT_LIB := $(BUILD)/libbmdoscircle.a
 
 OBJS = src/main.o src/kernel.o src/logging.o src/options.o \
-       src/port/platform.o src/port/menu.o src/port/osd.o src/port/posix_extra.o src/port/bigalloc.o \
+       src/port/platform.o src/port/coreopts.o src/port/vfs.o src/port/keys.o \
+       src/port/clock.o src/port/menu.o src/port/osd.o src/port/bigalloc.o \
        src/port/fswrap.o \
-       $(addprefix src/port/,$(PREVIOUS_PORT_SRCS:.c=.o) $(PREVIOUS_PORT_NET_SLIRP:.c=.o)) \
-       $(addprefix src/port/,$(PREVIOUS_PORT_CXX_SRCS:.cpp=.o)) \
        src/network.o src/network_time_sync.o \
        src/webui/webui.o src/webui/webui_http.o src/webui/webui_fs.o \
        src/webui/webui_machine.o src/webui/webui_assets.o \
@@ -82,102 +73,66 @@ include $(CIRCLEHOME)/Rules.mk
 
 INCLUDE := $(CIRCLE_STDLIB_INCLUDES) $(INCLUDE) -I $(CIRCLEHOME)/addon/fatfs
 
-# See src/port/fswrap.c
-LDFLAGS += --wrap=stat --wrap=File_MakeAbsoluteName
-# See src/port/bigalloc.c
-LDFLAGS += --wrap=malloc --wrap=free
+# See src/port/fswrap.c, src/port/bigalloc.c, and posix_memalign() and
+# gettimeofday() in src/port/circle/posix.c
+LDFLAGS += --wrap=stat --wrap=readdir --wrap=malloc --wrap=free --wrap=gettimeofday
 
-VERSION_DEFINES = -DBMNEXT_VERSION=\"$(BMNEXT_VERSION)\" \
-                  -DBMNEXT_GIT=\"$(BMNEXT_GIT)\" -DPREVIOUS_SVN=\"$(PREVIOUS_VERSION)\"
+VERSION_DEFINES = -DBMDOS_VERSION=\"$(BMDOS_VERSION)\" \
+                  -DBMDOS_GIT=\"$(BMDOS_GIT)\" -DDOSBOX_PURE_VERSION=\"$(DOSBOX_PURE_VERSION)\"
 CFLAGS += $(VERSION_DEFINES)
 CPPFLAGS += $(VERSION_DEFINES)
 
-PREVIOUS_INCLUDES = -I src/port -I src/port/compat \
-                    $(addprefix -I $(PREVIOUS)/,$(PREVIOUS_INCLUDE_DIRS)) \
-                    -I $(PREVIOUS) -I $(GEN) -I $(ZLIB)
+# The port's C files talk to DOSBox Pure through libretro.h.
+src/port/%.o src/port/%.d: CFLAGS += -I src/port -I $(DBP)/libretro-common/include -std=gnu11
 
-# The port's C files include Previous's headers.
-src/port/%.o src/port/%.d: CFLAGS += $(PREVIOUS_INCLUDES) -std=gnu11 \
-	-include src/port/compat/previous_prefix.h
-$(addprefix src/port/,$(PREVIOUS_PORT_SRCS:.c=.o) platform.o menu.o): $(GEN)/cputbl.h
+# DOSBox Pure, with Circle's compiler and C library (circle-stdlib's newlib
+# and libstdc++): BMDOS's headers first (src/port/circle/include: pthread.h
+# declares the functions src/port/circle/threads.c has, bma_circle.h what
+# else newlib lacks), then Circle's (CPPFLAGS: circle-newlib's headers and
+# libstdc++'s, not the toolchain's own newlib). Its dynamic recompiler is AArch64's on the 64-bit
+# kernels (it writes code into the heap, which circle_jit_exec_patch.diff
+# leaves executable); the 32-bit ones (the Pi 2 and 3) have none: the 32-bit
+# one flushes the caches with a Linux system call.
+DBP_PI_FLAGS = -I src/port/circle/include $(CPPFLAGS) \
+               $(DBP_CXXFLAGS) $(DBP_RENAMES) -include src/port/circle/include/bma_circle.h
+ifeq ($(strip $(AARCH)),32)
+DBP_PI_FLAGS += -DDISABLE_DYNAREC=1
+endif
+CIRCLE_PORT_FLAGS = -I src/port/circle/include $(CFLAGS) \
+                    -std=gnu11 -include src/port/circle/include/bma_circle.h \
+                    -I src/port/circle/libco -Wall -Wno-unused-parameter
 
-# The NeXT's network: SLiRP's and Previous's servers' socket calls are
-# bmnet's (src/port/compat/bmnet.h), and the headers newlib for Circle
-# lacks are in src/port/compat/pi/.
-BMNET_FLAGS = -I $(PREVIOUS)/slirp -I src/port/compat/pi $(PREVIOUS_SLIRP_CFLAGS) \
-              -include src/port/compat/bmnet.h
-$(addprefix src/port/,$(PREVIOUS_PORT_NET_BMNET:.c=.o)) \
-$(addprefix src/port/,$(PREVIOUS_PORT_NET_BMNET:.c=.d)): CFLAGS += $(BMNET_FLAGS)
+$(BUILD)/dbp_flags: FORCE
+	@mkdir -p $(BUILD)
+	@if [ "$$(cat $@ 2>/dev/null)" != "$(DBP_PI_FLAGS)" ]; then echo "$(DBP_PI_FLAGS)" > $@; fi
 
-# Previous itself (and zlib): compiled into build/ so third_party stays
-# clean.
-PREVIOUS_FLAGS = $(PREVIOUS_CFLAGS) $(PREVIOUS_INCLUDES) -include src/port/compat/previous_prefix.h
-
-# The CPU core's generated sources, as Previous's build makes them for a
-# cross compile (src/cpu/CMakeLists.txt): build68k and gencpu are built for
-# this computer, with its compiler.
-HOSTCC ?= cc
-
-$(GEN)/build68k: $(PREVIOUS)/cpu/build68k.c $(PREVIOUS)/cpu/writelog.c
-	@mkdir -p $(GEN)
-	@echo "  HOSTCC $@"
-	@$(HOSTCC) -I $(PREVIOUS)/cpu -I $(PREVIOUS)/includes -I src/port -o $@ $^
-
-$(GEN)/cpudefs.c: $(GEN)/build68k $(PREVIOUS)/cpu/table68k
-	@echo "  GEN   $@"
-	@$(GEN)/build68k < $(PREVIOUS)/cpu/table68k > $@
-
-$(GEN)/gencpu: $(GEN)/cpudefs.c $(PREVIOUS)/cpu/gencpu.c $(PREVIOUS)/cpu/readcpu.c
-	@echo "  HOSTCC $@"
-	@$(HOSTCC) -I $(PREVIOUS)/cpu -I $(PREVIOUS)/includes -I src/port -o $@ $^
-
-$(GEN)/cpustbl.c: $(GEN)/gencpu
-	@echo "  GEN   $(GEN)/cpuemu_*.c"
-	@cd $(GEN) && ./gencpu > /dev/null
-
-$(addprefix $(GEN)/,$(filter-out cpustbl.c,$(PREVIOUS_CPUGEN_SRCS))) $(GEN)/cputbl.h: $(GEN)/cpustbl.c
-
-# A static pattern rule: Circle's own %.o: %.c (Rules.mk) would otherwise be
-# used for these, which are .c files next to their .o (make 3.81, macOS's,
-# takes the first rule that matches).
-PREVIOUS_GEN_OBJS := $(addprefix $(GEN)/,$(PREVIOUS_CPUGEN_SRCS:.c=.o) $(PREVIOUS_CPUDEFS_SRC:.c=.o))
-$(PREVIOUS_GEN_OBJS): $(GEN)/%.o: $(GEN)/%.c
-	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) $(PREVIOUS_FLAGS) -c -o $@ $<
-
-# The NeXTbus and the NeXTdimension (C++), with Circle's C++ options.
-$(BUILD)/previous/%.o: $(PREVIOUS)/%.cpp $(GEN)/cputbl.h
+$(BUILD)/dbp/%.o: $(DBP)/%.cpp $(BUILD)/dbp_flags
 	@mkdir -p $(dir $@)
 	@echo "  CPP   $<"
-	@$(CPP) $(filter-out -std=gnu11,$(CPPFLAGS)) $(PREVIOUS_CXXFLAGS) $(PREVIOUS_INCLUDES) \
-	        -include src/port/compat/previous_prefix.h -c -o $@ $<
+	@$(CPP) $(DBP_PI_FLAGS) -c -o $@ $<
 
-# BMNeXT's NeXTdimension screen functions (src/port/nd_screen.cpp).
-$(addprefix src/port/,$(PREVIOUS_PORT_CXX_SRCS:.cpp=.o)): src/port/%.o: src/port/%.cpp $(GEN)/cputbl.h
-	@echo "  CPP   $<"
-	@$(CPP) $(filter-out -std=gnu11,$(CPPFLAGS)) $(PREVIOUS_CXXFLAGS) $(PREVIOUS_INCLUDES) \
-	        -include src/port/compat/previous_prefix.h -c -o $@ $<
-
-# Before the rule below: make 3.81 (macOS's) takes the first that matches.
-$(BUILD)/previous/slirp/%.o: $(PREVIOUS)/slirp/%.c src/port/compat/bmnet.h
-	@mkdir -p $(dir $@)
-	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) $(PREVIOUS_FLAGS) $(BMNET_FLAGS) -c -o $@ $<
-
-$(BUILD)/previous/%.o: $(PREVIOUS)/%.c $(GEN)/cputbl.h
-	@mkdir -p $(dir $@)
-	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) $(PREVIOUS_FLAGS) -c -o $@ $<
-
-$(BUILD)/zlib/%.o: $(ZLIB)/%.c
-	@mkdir -p $(dir $@)
-	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) $(ZLIB_CFLAGS) -c -o $@ $<
-
-$(PREVIOUS_LIB): $(PREVIOUS_OBJS)
+$(DBP_LIB): $(DBP_OBJS)
 	@echo "  AR    $@"
 	@rm -f $@
-	@$(AR) cr $@ $(PREVIOUS_OBJS)
+	@$(AR) cr $@ $(DBP_OBJS)
+
+$(BUILD)/port/%.o: src/port/circle/%.c $(wildcard src/port/circle/include/*.h)
+	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	@$(CC) $(CIRCLE_PORT_FLAGS) -c -o $@ $<
+
+$(BUILD)/port/libco.o: src/port/circle/libco/libco.c
+	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	@$(CC) $(CIRCLE_PORT_FLAGS) -w -c -o $@ $<
+
+$(CIRCLE_PORT_LIB): $(CIRCLE_PORT_OBJS)
+	@echo "  AR    $@"
+	@rm -f $@
+	@$(AR) cr $@ $(CIRCLE_PORT_OBJS)
+
+.PHONY: FORCE
+FORCE:
 
 # The web UI's pages are compiled in. Regenerate them when they change.
 WEBUI_ASSETS = $(shell find src/webui/assets -type f)
@@ -185,7 +140,7 @@ src/webui/webui_assets.c: $(WEBUI_ASSETS) tools/gen_webui_assets.py
 	@echo "  GEN   $@"
 	@python3 tools/gen_webui_assets.py
 
-$(TARGET).img: $(PREVIOUS_LIB)
+$(TARGET).img: $(DBP_LIB) $(CIRCLE_PORT_LIB)
 
 ifneq ($(filter 4 5,$(RASPPI)),)
 VIDEOCORE_LIBS :=
@@ -199,7 +154,7 @@ VIDEOCORE_LIBS := \
 	$(CIRCLEHOME)/addon/linux/liblinuxemu.a
 endif
 
-LIBS := $(PREVIOUS_LIB) \
+LIBS := $(DBP_LIB) $(CIRCLE_PORT_LIB) \
 	$(CIRCLE_STDLIB_INSTALL_DIR)/lib/libm.a \
 	$(CIRCLE_STDLIB_INSTALL_DIR)/lib/libc.a \
 	$(CIRCLE_STDLIB_INSTALL_DIR)/lib/libcirclenewlib.a \

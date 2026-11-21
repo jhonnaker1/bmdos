@@ -1,18 +1,18 @@
 //
 // logging.h
 //
-// Where the log (Circle's logger and stdio, so Previous's messages too)
-// goes: the serial port (UART), the serial port and /bmnext.log on the
+// Where the log (Circle's logger and stdio, so DOSBox Pure's messages too)
+// goes: the serial port (UART), the serial port and /bmdos.log on the
 // SD card (file), or nowhere.
 // Set with enable_logging=off|uart|file, as in BMC64, or in the menu.
 // Based on BMC64's CLoggingDevice (third_party/common/menu_logging_device.cpp).
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_LOGGING_H_
-#define BMNEXT_LOGGING_H_
+#ifndef BMDOS_LOGGING_H_
+#define BMDOS_LOGGING_H_
 
 #include <circle/device.h>
 #include <circle/spinlock.h>
@@ -20,7 +20,7 @@
 #include "host.h"
 #include "sdcard/sd_fs.h"
 
-#define LOG_FILE "/bmnext.log"
+#define LOG_FILE "/bmdos.log"
 
 // During start up, writes the log to the card now if it goes to the file
 // (see CLogDevice::Flush()); afterwards does nothing. Implemented by the

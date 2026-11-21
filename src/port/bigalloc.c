@@ -19,11 +19,11 @@
  *
  * Only the Pi needs this: the PC test harness's C library reuses memory.
  *
- * This file is part of BMNeXT, a bare metal NeXT emulator for the
+ * This file is part of BMDOS, a bare metal NeXT emulator for the
  * Raspberry Pi. See LICENSE for licensing details.
  */
 
-#ifndef BMNEXT_HOST_LIBC
+#ifndef BMDOS_HOST_LIBC
 
 #include <stddef.h>
 #include <stdint.h>
@@ -88,10 +88,13 @@ void *__wrap_malloc(size_t size)
 	return block;
 }
 
+/* src/port/circle/posix.c: a block posix_memalign() gave. */
+int bma_free_aligned(void *p);
+
 void __wrap_free(void *block)
 {
 	int i, n;
-	if (block == NULL)
+	if (block == NULL || bma_free_aligned(block))
 		return;
 	n = __atomic_load_n(&count, __ATOMIC_ACQUIRE);
 	for (i = 0; i < n; i++)

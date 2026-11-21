@@ -16,12 +16,12 @@
 //    v3d_tiling.c: the UIF texture layout.
 //  - src/broadcom/cle/v3d_packet.xml: the record layouts.
 //
-// This file is part of BMNeXT, a bare metal NeXT emulator for
+// This file is part of BMDOS, a bare metal MS-DOS PC emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMNEXT_V3D_DRAW_H_
-#define BMNEXT_V3D_DRAW_H_
+#ifndef BMDOS_V3D_DRAW_H_
+#define BMDOS_V3D_DRAW_H_
 
 #include "gpu.h"
 #include "shader.h"
