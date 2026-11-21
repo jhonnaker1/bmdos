@@ -226,8 +226,12 @@ shows FujiNet's hosts and drive slots. FreeDOS 1.4 works the same way:
 its *LiteUSB* edition (`FD14LITE.img`, a 32 MB hard disk image, from
 freedos.org) in `dos/system`, with `DEVICE=\FUJINET.SYS` added to its
 `FDCONFIG.SYS`, `SETUP.BAT` renamed (else it starts the installer) and
-`call CDROM.BAT` taken out of its `FDAUTO.BAT` (FreeDOS's CD driver,
-UDVD2, waits for ever on DOSBox's CD drive). A FreeDOS 1.3 hard disk image
+`call CDROM.BAT` taken out of its `FDAUTO.BAT`. None of FreeDOS 1.4's own
+CD drivers works with DOSBox Pure's CD drive: UDVD2 (the one `CDROM.BAT`
+picks) and UIDE stop the PC (it ends up running at address 0000:0000,
+just after their PCI BIOS search for the IDE controller), ELTORITO and
+GCDROM fail, and ATAPICDD finds no drive. A manufacturer's ATAPI driver
+does work: MS-DOS 6.22 with Samsung's `SSCDROM.SYS` found the drive. A FreeDOS 1.3 hard disk image
 made by 86Box (4 GB, FAT32) didn't start in DOSBox Pure ("read error while
 reading drive", before FreeDOS itself).
 
