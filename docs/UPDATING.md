@@ -5,8 +5,11 @@
 DOSBox Pure is a submodule in `third_party/dosbox-pure`, from its home on
 Codeberg (https://codeberg.org/schelling/dosbox-pure; the GitHub
 repository it moved from, schellingb/dosbox-pure, is no longer updated).
-It is built unmodified, as its libretro core: everything BMDOS needs to run
-it on Circle is in `src/`.
+It is built as its libretro core with one change of BMDOS's, a patch in
+`src/patches` (`dosbox_pure_*.diff`, applied by
+`src/patches/apply_dosbox_pure_patches.sh` whenever the Pi's or the
+simulator's Makefile is read; see `src/patches/README.md`); everything
+else BMDOS needs to run it on Circle is in `src/`.
 
 | File | What it has to do with DOSBox Pure |
 |---|---|

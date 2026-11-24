@@ -28,4 +28,17 @@ library), reset first in the same way.
 | `newlib_fastseek_patch.diff` | Fast seek for files of 1 MB or more opened as they are (disk images): their cluster map is made when they are opened, so a seek back no longer follows the cluster chain from the file's start, a read from the SD card for every 128 clusters (hundreds a seek in a 2 GB image). A file in fast seek mode can't grow, so the map is let go before a write or seek past its end, and before truncating. |
 | `newlib_seek64_patch.diff` | 64-bit file positions in `lseek()` (`CGlueIO::LSeek()` and `_lseek()` took and gave an `int`, so a disk image's data past 2 GB couldn't be reached though FAT32's files go to 4 GB). A position past what FatFs can hold is `EOVERFLOW`, not wrapped round. From BMAmiga. |
 
-DOSBox Pure is not patched: what it needs on Circle is in `src/port/circle`; see `docs/UPDATING.md`.
+## DOSBox Pure
+
+Applied by `apply_dosbox_pure_patches.sh`, which `src/port/dosbox.mk` runs
+whenever the Pi kernels' Makefile or the PC simulator's is read (so
+`make_all.sh`, CI and `tools/hostsim/run_tests.sh` all get them). Each
+patch is applied only if it isn't there yet, so DOSBox Pure isn't reset;
+one that neither is there nor applies stops the build (see
+`docs/UPDATING.md`). `--skip-patches` doesn't skip these.
+
+| Patch | Description |
+| --- | --- |
+| `dosbox_pure_volume_path_patch.diff` | `fpath_nocase()` (`dosbox_pure_libretro.cpp`) took a path that doesn't start with `/` as relative to the content's folder, so a disk image (ISO, CUE, IMG) started from a USB stick, `USB:/NAME`, was looked for as `USB:/USB:/NAME` and didn't mount ("Unable to open CD-ROM image file"). A path that starts with a name and `:/` is a full path now. ZIPs weren't affected (DOSBox Pure opens them without it). Test `usbimage`. |
+
+What else DOSBox Pure needs on Circle is in `src/port/circle`.

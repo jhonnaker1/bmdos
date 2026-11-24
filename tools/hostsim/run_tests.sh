@@ -214,6 +214,19 @@ check_log usb "starting usb/bmdostest\.zip" "started from the stick"
 check_log usb "USB stick 1 out: the PC's content was on it" "the stick pulled out is noticed"
 check_log usb "usb/bmdostest\.zip was on the USB stick pulled out: starting without it" "the PC starts again without it"
 
+echo "A disk image on a USB stick (USB:/...)"
+# On the Pi a stick's files are "USB:/NAME". DOSBox Pure took a path that
+# doesn't start with "/" as relative to the content's folder, so a disk
+# image there wasn't found (USB:/USB:/NAME); ZIPs were opened without that
+# lookup. src/patches/dosbox_pure_volume_path_patch.diff. A folder called
+# "USB:" stands in for the stick, as FatFs's volume does.
+mkdir -p "$OUT/usbimage/USB:"
+python3 "$HERE/dos/make_test_img.py" "$OUT/zips/bmdostest.zip" BEEP.COM "$OUT/usbimage/USB:/BMDOSTST.IMG" || exit 1
+(cd "$OUT/usbimage" && printf "$(key $ENTER 200)300 quit\n" | \
+    BMDOS_CMDLINE="root=. content=USB:/BMDOSTST.IMG" "$SIM" > log.txt 2>&1)
+check_no_log usbimage "Unable to open" "DOSBox Pure opened the image"
+check_log usbimage "Program: BEEP" "BEEP.COM ran from the floppy image (A:)"
+
 echo "IRQ 13 to 15 have handlers (DOSBox Pure's BIOS leaves them empty)"
 # IRQ.COM, the only program in its ZIP, issues INT 75h, 76h and 77h: with
 # the vectors at 0000:0000 the PC would stop there (FreeDOS's UDVD2 did,

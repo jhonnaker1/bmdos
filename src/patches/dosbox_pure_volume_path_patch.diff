@@ -1,0 +1,19 @@
+diff --git a/dosbox_pure_libretro.cpp b/dosbox_pure_libretro.cpp
+index ea24d45..bb5fdab 100644
+--- a/dosbox_pure_libretro.cpp
++++ b/dosbox_pure_libretro.cpp
+@@ -3985,9 +3985,12 @@ bool fpath_nocase(std::string& pathstr, bool* out_is_dir)
+ 	// For absolute paths we can just return here because paths are not case sensitive on Windows
+ 	if ((path[1] == ':' && (path[2] == '/' || path[2] == '\\')) || (path[0] == '\\' && path[1] == '\\')) return exists_utf8(path, out_is_dir);
+ 	#else
+-	const bool is_absolute = (path[0] == '/' || path[0] == '\\');
++	// BMDOS: a path that starts with a volume name, such as "USB:/" or "SD:/" (Circle's FatFs), is absolute too
++	size_t volumelen = 0;
++	for (const char* p = path; *p && *p != '/' && *p != '\\'; p++) { if (*p == ':') { if (p != path && (p[1] == '/' || p[1] == '\\')) volumelen = (size_t)(p + 2 - path); break; } }
++	const bool is_absolute = (path[0] == '/' || path[0] == '\\' || volumelen);
+ 	if (is_absolute && exists_utf8(path, out_is_dir)) return true; // exists as is with an absolute path
+-	size_t contentdirlen = 1; // 1 to use root on absolute path
++	size_t contentdirlen = (volumelen ? volumelen : 1); // 1 to use root on absolute path (BMDOS: or the volume's root)
+ 	if (!is_absolute)
+ 	{
+ 		#endif

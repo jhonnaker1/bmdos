@@ -3,8 +3,11 @@ DOSBox Pure
 
 BMDOS's PC emulation is DOSBox Pure (https://codeberg.org/schelling/dosbox-pure),
 by Bernhard Schelling, a fork of DOSBox by the DOSBox Team, built as its
-libretro core and used unmodified (third_party/dosbox-pure in BMDOS's
-source). Its notice:
+libretro core (third_party/dosbox-pure in BMDOS's source). BMDOS changes
+one function in it, fpath_nocase() in dosbox_pure_libretro.cpp, so that a
+path starting with a volume name (USB:/) is a full path
+(src/patches/dosbox_pure_volume_path_patch.diff, November 2026). Its
+notice:
 
   Copyright (C) 2020-2026 Bernhard Schelling
   Copyright (C) 2002-2021 The DOSBox Team

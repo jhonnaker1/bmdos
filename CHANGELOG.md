@@ -6,7 +6,7 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
 [DOSBox Pure](https://codeberg.org/schelling/dosbox-pure) (1.0-preview8,
 9cccfa2) in place of BMNeXT's Previous.
 
-- DOSBox Pure built unmodified as its libretro core, driven directly by
+- DOSBox Pure built as its libretro core, driven directly by
   BMDOS's front end (`src/port/platform.c`, after BMAmiga's): its picture
   (32-bit where the display shows it), its sound at the HDMI's 48 kHz
   with dynamic rate control, the keyboard, a mouse, and up to four
@@ -54,6 +54,12 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
   waits for the reset signature that DOSBox Pure's (and DOSBox-X's) IDE
   emulation doesn't load after a soft reset
 
+- A disk image (ISO, CUE, IMG) on a USB stick mounts: DOSBox Pure looked
+  for `USB:/NAME` in the content's own folder (`USB:/USB:/NAME`) and
+  said "Unable to open CD-ROM image file". BMDOS's one change to DOSBox
+  Pure, `src/patches/dosbox_pure_volume_path_patch.diff`, applied by the
+  Makefiles; test `usbimage`. ZIPs on sticks worked already
+
 From BMMacintosh 0.3.1:
 
 - The picture keeps its shape on 5:4 and 16:10 displays
@@ -64,7 +70,7 @@ Left out: the PC's network (DOSBox Pure's modem and IPX need a libretro
 frontend's netplay), OpenGL Voodoo (the software one is there), the
 32-bit kernels' dynamic recompiler.
 
-Tested in the PC simulator only (`tools/hostsim`, 36 checks; and EGA
+Tested in the PC simulator only (`tools/hostsim`, 48 checks; and EGA
 Trek from a ZIP): DOSBox Pure's start menu and DOS prompt, the keyboard,
 the PC speaker, a gamepad as keys and as a PC joystick, the menu and
 settings, USB sticks, the web UI's requests. The Pi 4 and Pi 5 kernels

@@ -6,10 +6,17 @@
 # libretro core, as its own Makefile builds it: every .cpp file in its top
 # folder and src/ (three folders deep), with __LIBRETRO__, as a static
 # library (STATIC_LINKING) that BMDOS's frontend (src/port/platform.c)
-# calls. Nothing in it is changed.
+# calls. One change is made to it, by src/patches/dosbox_pure_*.diff (see
+# src/patches/README.md), applied here as the Makefile is read, before
+# anything is built, if it isn't there yet.
 #
 # DBP is the path to third_party/dosbox-pure (set by the includer).
 #
+
+DBP_PATCHED := $(shell sh $(DBP)/../../src/patches/apply_dosbox_pure_patches.sh >&2 && echo yes)
+ifneq ($(DBP_PATCHED),yes)
+$(error DOSBox Pure's patches (src/patches/dosbox_pure_*.diff) could not be applied)
+endif
 
 DBP_SRCS := $(sort $(wildcard $(DBP)/*.cpp $(DBP)/src/*.cpp $(DBP)/src/*/*.cpp \
                               $(DBP)/src/*/*/*.cpp))
