@@ -83,6 +83,14 @@ VERSION_DEFINES = -DBMDOS_VERSION=\"$(BMDOS_VERSION)\" \
 CFLAGS += $(VERSION_DEFINES)
 CPPFLAGS += $(VERSION_DEFINES)
 
+# The files that show the version are built again when it changes (a new
+# commit), or a kernel built since keeps the old one, and
+# check_release_files.sh turns the SD card down.
+VERSION_STAMP := $(BUILD)/version.stamp
+VERSION_NOW := $(BMDOS_VERSION) $(BMDOS_GIT) $(DOSBOX_PURE_VERSION)
+$(shell mkdir -p $(BUILD); [ "$$(cat $(VERSION_STAMP) 2>/dev/null)" = "$(VERSION_NOW)" ] || echo "$(VERSION_NOW)" > $(VERSION_STAMP))
+src/kernel.o src/port/menu.o src/port/platform.o src/webui/webui.o: $(VERSION_STAMP)
+
 # The port's C files talk to DOSBox Pure through libretro.h.
 src/port/%.o src/port/%.d: CFLAGS += -I src/port -I $(DBP)/libretro-common/include -std=gnu11
 
