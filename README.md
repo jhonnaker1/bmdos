@@ -113,9 +113,9 @@ src/av/, src/v3d/, src/kms Shared Pi 4/5 video, GPU and display drivers
 tools/hostsim              Runs the emulator port on a PC for testing
 ```
 
-DOSBox Pure has one small change (`src/patches/dosbox_pure_volume_path_patch.diff`:
-a path on a USB stick, `USB:/...`, is a full path); everything else
-specific to BMDOS is in `src/`.
+DOSBox Pure has two small changes (`src/patches/`): a path on a USB
+stick, `USB:/...`, is a full path, and its 3dfx Voodoo draws triangles
+on the Pi's other cores; everything else specific to BMDOS is in `src/`.
 
 ## Licence
 

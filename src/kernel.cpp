@@ -13,6 +13,7 @@
 //
 
 #include "kernel.h"
+#include "corepool.h"
 #include "av/layout.h"
 #include "logging.h"
 #include "network.h"
@@ -73,6 +74,18 @@ static inline void Core1Beat(const char *stage) {
   s_Core1Beat = s_Core1Beat + 1;
 }
 
+// ---- The core pool (src/corepool.h, host_pool_run() in src/host.h) -------
+
+static CorePool s_CorePool;
+
+CorePool &TheCorePool(void) { return s_CorePool; }
+
+unsigned host_pool_cores(void) { return s_CorePool.Helpers(); }
+
+void host_pool_run(void (*fn)(void *arg, unsigned part), void *arg, unsigned parts) {
+  s_CorePool.Run(fn, arg, parts);
+}
+
 // ---- The helper core: core 3 on the Pi 5 (src/host.h) --------------------
 //
 // Runs one task at a time for the emulator, posted by core 1 (BMNeXT's
@@ -87,10 +100,16 @@ static void *volatile s_HelperArg = 0;
 static int s_HelperBusy = 0;  // a task posted and not yet returned
 
 static void HelperLoop(void) {
+  // Between tasks it helps the core pool (src/corepool.h). A pool run
+  // waits for every helper, so while a task runs the emulator would wait
+  // for it too: BMDOS starts no tasks (host_helper_start() is unused).
+  unsigned seen = s_CorePool.Register();
   for (;;) {
     THelperTask task;
     while ((task = __atomic_load_n(&s_HelperTask, __ATOMIC_ACQUIRE)) == 0) {
-      asm volatile("wfe");
+      if (!s_CorePool.Help(seen)) {
+        asm volatile("wfe");
+      }
     }
     task(s_HelperArg);
     __atomic_store_n(&s_HelperTask, (THelperTask)0, __ATOMIC_RELAXED);

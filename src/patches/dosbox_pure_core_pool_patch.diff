@@ -1,0 +1,120 @@
+diff --git a/src/gui/midi_tsf.h b/src/gui/midi_tsf.h
+index e739d28..a2ec2c5 100644
+--- a/src/gui/midi_tsf.h
++++ b/src/gui/midi_tsf.h
+@@ -160,11 +160,23 @@ struct MidiHandler_tsf : public MidiHandler
+ 
+ static MidiHandler_tsf Midi_tsf;
+ 
++#ifdef BMDOS_CORE_POOL
++// BMDOS: the time the SoundFont synthesizer takes (src/port/platform.c)
++extern "C" unsigned long long bmdos_prof_begin(void);
++extern "C" void bmdos_prof_end(int what, unsigned long long begin);
++#endif
++
+ static void MIDI_TSF_CallBack(Bitu len)
+ {
+ 	DBP_ASSERT(len <= (MIXER_BUFSIZE/4));
+ 	if (len > (MIXER_BUFSIZE/4)) len = (MIXER_BUFSIZE/4);
++	#ifdef BMDOS_CORE_POOL
++	unsigned long long begin = bmdos_prof_begin();
++	#endif
+ 	tsf_render_short(Midi_tsf.sf, (Bit16s*)MixTemp, (int)len, 0);
++	#ifdef BMDOS_CORE_POOL
++	bmdos_prof_end(2, begin);
++	#endif
+ 	Midi_tsf.chan->AddSamples_s16(len, (Bit16s*)MixTemp);
+ }
+ 
+diff --git a/src/hardware/mixer.cpp b/src/hardware/mixer.cpp
+index 7296409..e4e9305 100644
+--- a/src/hardware/mixer.cpp
++++ b/src/hardware/mixer.cpp
+@@ -537,7 +537,19 @@ static Bit32u calc_tickadd(Bit32u freq) {
+ }
+ 
+ /* Mix a certain amount of new samples */
++#ifdef BMDOS_CORE_POOL
++extern "C" unsigned long long bmdos_prof_begin(void);
++extern "C" void bmdos_prof_end(int what, unsigned long long begin);
++static void MIXER_MixData_Timed(Bitu needed);
+ static void MIXER_MixData(Bitu needed) {
++	unsigned long long begin = bmdos_prof_begin();
++	MIXER_MixData_Timed(needed);
++	bmdos_prof_end(1, begin);
++}
++static void MIXER_MixData_Timed(Bitu needed) {
++#else
++static void MIXER_MixData(Bitu needed) {
++#endif
+ 	MixerChannel * chan=mixer.channels;
+ 	while (chan) {
+ 		chan->Mix(needed);
+diff --git a/src/hardware/voodoo.cpp b/src/hardware/voodoo.cpp
+index 03041a1..9c8a54e 100644
+--- a/src/hardware/voodoo.cpp
++++ b/src/hardware/voodoo.cpp
+@@ -78,6 +78,16 @@
+ #include "cpu.h"
+ #include "dbp_threads.h"
+ 
++#ifdef BMDOS_CORE_POOL
++// BMDOS: its threads take turns on one core, so the triangle workers run
++// on the Pi's other cores instead (host_pool_run(), src/corepool.h), and
++// the time spent drawing is measured (bmdos_prof_*, src/port/platform.c).
++extern "C" unsigned host_pool_cores(void);
++extern "C" void host_pool_run(void (*fn)(void *arg, unsigned part), void *arg, unsigned parts);
++extern "C" unsigned long long bmdos_prof_begin(void);
++extern "C" void bmdos_prof_end(int what, unsigned long long begin);
++#endif
++
+ #define C_DBP_ENABLE_VOODOO_OPENGL
+ 
+ #ifdef C_DBP_ENABLE_VOODOO_OPENGL
+@@ -6169,7 +6179,24 @@ static void triangle_worker_shutdown(triangle_worker& tworker)
+ 	delete [] tworker.sembegin;
+ }
+ 
++#ifdef BMDOS_CORE_POOL
++static void triangle_worker_part(void* p, unsigned part)
++{
++	triangle_worker_work(*(triangle_worker*)p, (int)part, (int)part + 1);
++}
++
++static void triangle_worker_run_threads(triangle_worker& tworker);
++static void triangle_worker_run(triangle_worker& tworker)
++{
++	unsigned long long begin = bmdos_prof_begin();
++	triangle_worker_run_threads(tworker);
++	bmdos_prof_end(0, begin);
++}
++
++static void triangle_worker_run_threads(triangle_worker& tworker)
++#else
+ static void triangle_worker_run(triangle_worker& tworker)
++#endif
+ {
+ 	if (!(v_perf & V_PERFFLAG_MULTITHREAD))
+ 	{
+@@ -6209,6 +6236,11 @@ static void triangle_worker_run(triangle_worker& tworker)
+ 		return;
+ 	}
+ 
++	#ifdef BMDOS_CORE_POOL
++	host_pool_run(triangle_worker_part, &tworker, tworker.triangle_threads + 1);
++	return;
++	#endif
++
+ 	if (!tworker.threads_active)
+ 	{
+ 		tworker.threads_active = true;
+@@ -8875,6 +8907,9 @@ static void Voodoo_Startup() {
+ 	memset(&v->tworker, 0, sizeof(v->tworker));
+ 	extern unsigned dbp_cpu_features_get_core_amount(void);
+ 	unsigned cores = dbp_cpu_features_get_core_amount();
++	#ifdef BMDOS_CORE_POOL
++	cores = host_pool_cores() + 1;
++	#endif
+ 	v->tworker.triangle_threads = (cores <= (MAX_TRIANGLE_THREADS+1) ? (UINT8)(cores - 1) : MAX_TRIANGLE_THREADS);
+ 
+ 	// Switch the pagehandler now that v has been allocated and is in use

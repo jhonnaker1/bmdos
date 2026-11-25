@@ -10,6 +10,7 @@
 #include "video.h"
 #include "layout.h"
 
+#include "../corepool.h"
 #include "../logging.h"
 
 #include <circle/bcmpropertytags.h>
@@ -436,9 +437,9 @@ void Pi4Video::WorkerLoop(unsigned core) {
   }
   Pi4Video *video = s_pThis;
   if (!video->m_bFiltered || core >= 4 || video->m_pLine[core] == 0) {
-    for (;;) {
-      asm volatile("wfi");
-    }
+    // Sharp pictures need no help: the core helps the emulator instead
+    // (src/corepool.h; the 3dfx Voodoo's triangles).
+    TheCorePool().HelpForever();
   }
   video->m_Share.Help(*video, core);
 }

@@ -40,5 +40,6 @@ one that neither is there nor applies stops the build (see
 | Patch | Description |
 | --- | --- |
 | `dosbox_pure_volume_path_patch.diff` | `fpath_nocase()` (`dosbox_pure_libretro.cpp`) took a path that doesn't start with `/` as relative to the content's folder, so a disk image (ISO, CUE, IMG) started from a USB stick, `USB:/NAME`, was looked for as `USB:/USB:/NAME` and didn't mount ("Unable to open CD-ROM image file"). A path that starts with a name and `:/` is a full path now. ZIPs weren't affected (DOSBox Pure opens them without it). Test `usbimage`. |
+| `dosbox_pure_core_pool_patch.diff` | Built with `-DBMDOS_CORE_POOL` (`src/port/dosbox.mk`). The 3dfx Voodoo's triangle workers (`voodoo.cpp`) are BMDOS's core pool (`host_pool_run()`, `src/corepool.h`) instead of DOSBox Pure's threads: BMDOS's threads take turns on core 1, so on the Pi its workers couldn't run beside it (and spinning on `done[]` they would wait forever). Each triangle over 350 pixels is split between core 1 and the idle cores 2 and 3. It also times the Voodoo's triangles, the mixer (`mixer.cpp`) and the SoundFont synthesizer (`midi_tsf.h`) for the log's "PC parts" line (`bmdos_prof_*`, `src/port/platform.c`). The PC simulator's pool is threads (`BMDOS_SIM_POOL`); Tomb Raider's 3D draws the same with none and with two. |
 
 What else DOSBox Pure needs on Circle is in `src/port/circle`.

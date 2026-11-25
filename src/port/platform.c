@@ -1048,6 +1048,47 @@ void bmdos_dosbox_status(char *text, size_t size);
 
 static unsigned speed_frames;
 static double speed_since, speed_core;
+
+/* Where DOSBox Pure's time goes, for the report every 10 s: its 3dfx
+   Voodoo's triangles, its sound (mixing every channel), and within that
+   the SoundFont synthesizer (src/patches/dosbox_pure_core_pool_patch.diff
+   calls these). Counted in the ARM's generic timer ticks on the Pi, which
+   are cheap to read. */
+#define PROF_PARTS 3
+static unsigned long long prof_ticks[PROF_PARTS];
+
+static unsigned long long prof_now(void)
+{
+#if defined(__circle__) && defined(__aarch64__)
+	unsigned long long t;
+	asm volatile("isb; mrs %0, cntvct_el0" : "=r" (t));
+	return t;
+#else
+	return (unsigned long long) (host_time() * 1e9);
+#endif
+}
+
+static double prof_seconds(unsigned long long ticks)
+{
+#if defined(__circle__) && defined(__aarch64__)
+	unsigned long long hz;
+	asm volatile("mrs %0, cntfrq_el0" : "=r" (hz));
+	return hz != 0 ? (double) ticks / (double) hz : 0.0;
+#else
+	return ticks / 1e9;
+#endif
+}
+
+unsigned long long bmdos_prof_begin(void)
+{
+	return prof_now();
+}
+
+void bmdos_prof_end(int what, unsigned long long begin)
+{
+	if (what >= 0 && what < PROF_PARTS)
+		prof_ticks[what] += prof_now() - begin;
+}
 static int speed_percent = 100, core_percent;
 
 void bmdos_status_text(char *text, size_t size)
@@ -1079,7 +1120,13 @@ static void report_speed(double now)
 		char pc[160];
 		bmdos_dosbox_status(pc, sizeof pc);
 		LOG("PC: %s\n", pc);
+		LOG("PC parts: Voodoo %.0f%%, sound %.0f%% (SoundFont %.0f%%) of the time; "
+		    "%u other cores draw the Voodoo's triangles\n",
+		    prof_seconds(prof_ticks[0]) * 100.0 / span,
+		    prof_seconds(prof_ticks[1]) * 100.0 / span,
+		    prof_seconds(prof_ticks[2]) * 100.0 / span, host_pool_cores());
 	}
+	memset(prof_ticks, 0, sizeof prof_ticks);
 	sound_report();
 	speed_since = now;
 	speed_frames = 0;

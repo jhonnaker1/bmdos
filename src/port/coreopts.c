@@ -47,10 +47,12 @@ const char *bmdos_option_bmdos_default(const char *key)
 	   the core's sound at that rate needs no resampling. */
 	if (strcmp(key, "dosbox_pure_audiorate") == 0)
 		return bmdos_sound_rate == 44100 ? "44100" : "48000";
-	/* The Voodoo's drawing threads would wait for each other forever on
-	   BMDOS's cooperative threads (circle/threads.c): one thread. */
+	/* The Voodoo's triangles drawn by the other cores too (BMDOS's own
+	   threads take turns on one core, so its triangle workers are the
+	   core pool's: src/patches/dosbox_pure_core_pool_patch.diff). Without
+	   a GPU for OpenGL "auto" would be the same. */
 	if (strcmp(key, "dosbox_pure_voodoo_perf") == 0)
-		return "0";
+		return "1";
 	/* With automatic cycles DOSBox Pure fills this much of each frame.
 	   Elsewhere its thread runs beside the frontend's; here it takes
 	   turns with BMDOS's work on one core, so at 100% a frame took longer

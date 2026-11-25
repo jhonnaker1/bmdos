@@ -32,6 +32,8 @@
  * BMDOS_SIM_RATE=48000 plays the sound at the Pi 4 and 5's HDMI rate
  * (the latency asked for is taken at 44.1 kHz, as there).
  *
+ * BMDOS_SIM_POOL=N: N threads for the core pool (src/host.h), 2 by
+ * default (0: none).
  * BMDOS_SIM_HELPER=1 gives it a helper core (src/host.h), a thread, as the
  * Pi 5 has (BMDOS doesn't use it yet).
  *
@@ -253,6 +255,90 @@ int host_on_helper(void)
 void host_helper_sleep_us(unsigned us)
 {
 	usleep(us);
+}
+
+/* ---- The core pool (src/host.h) ------------------------------------------- */
+
+/* Real threads stand in for the Pi's cores 2 and 3: BMDOS_SIM_POOL=N
+   helpers (2 by default, 0 for none). Simpler than src/corepool.h (a
+   mutex instead of atomics and WFE) but the same contract: every part done
+   when host_pool_run() returns. */
+static pthread_mutex_t pool_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t pool_posted = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t pool_finished = PTHREAD_COND_INITIALIZER;
+static pthread_once_t pool_once = PTHREAD_ONCE_INIT;
+static unsigned pool_helpers, pool_generation, pool_next, pool_total, pool_done;
+static void (*pool_fn)(void *arg, unsigned part);
+static void *pool_arg;
+
+/* Takes and does parts until there are none left; called with the lock. */
+static void pool_share(void)
+{
+	while (pool_next < pool_total) {
+		unsigned part = pool_next++;
+		void (*fn)(void *, unsigned) = pool_fn;
+		void *arg = pool_arg;
+		pthread_mutex_unlock(&pool_lock);
+		fn(arg, part);
+		pthread_mutex_lock(&pool_lock);
+		if (++pool_done == pool_total)
+			pthread_cond_signal(&pool_finished);
+	}
+}
+
+static void *pool_main(void *unused)
+{
+	unsigned seen;
+	pthread_mutex_lock(&pool_lock);
+	seen = pool_generation;
+	for (;;) {
+		while (pool_generation == seen)
+			pthread_cond_wait(&pool_posted, &pool_lock);
+		seen = pool_generation;
+		pool_share();
+	}
+	return NULL;
+}
+
+static void pool_start(void)
+{
+	const char *e = getenv("BMDOS_SIM_POOL");
+	unsigned n = e != NULL ? (unsigned) atoi(e) : 2, i;
+	for (i = 0; i < n && i < 8; i++) {
+		pthread_t t;
+		if (pthread_create(&t, NULL, pool_main, NULL) == 0) {
+			pthread_detach(t);
+			pool_helpers++;
+		}
+	}
+}
+
+unsigned host_pool_cores(void)
+{
+	pthread_once(&pool_once, pool_start);
+	return pool_helpers;
+}
+
+void host_pool_run(void (*fn)(void *arg, unsigned part), void *arg, unsigned parts)
+{
+	unsigned i;
+	if (host_pool_cores() == 0 || parts < 2) {
+		for (i = 0; i < parts; i++)
+			fn(arg, i);
+		return;
+	}
+	pthread_mutex_lock(&pool_lock);
+	pool_fn = fn;
+	pool_arg = arg;
+	pool_next = 0;
+	pool_done = 0;
+	pool_total = parts;
+	pool_generation++;
+	pthread_cond_broadcast(&pool_posted);
+	pool_share();
+	while (pool_done < pool_total)
+		pthread_cond_wait(&pool_finished, &pool_lock);
+	pthread_mutex_unlock(&pool_lock);
 }
 
 /* ---- Sound ---------------------------------------------------------------- */

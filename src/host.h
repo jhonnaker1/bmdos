@@ -54,6 +54,20 @@ int host_helper_busy(void);
 int host_on_helper(void);
 void host_helper_sleep_us(unsigned us);
 
+/* ---- The other cores, for work split in parts ------------------------------ */
+
+/* The cores that help with host_pool_run(): the Pi's cores 2 and 3 when
+   they aren't drawing smoothed or CRT pictures (and, on the Pi 5, core 3
+   whenever it has no helper task), threads in the PC simulator; 0 if
+   there are none. DOSBox Pure's 3dfx Voodoo draws its triangles with them
+   (src/patches/dosbox_pure_core_pool_patch.diff). */
+unsigned host_pool_cores(void);
+/* Runs FN(ARG, part) once for each part from 0 to PARTS - 1, the caller
+   doing some of them and the helpers the rest, in any order, and returns
+   when all are done. Only the emulator's core calls it. FN must not use
+   Circle (no printing, files, scheduler or allocation). */
+void host_pool_run(void (*fn)(void *arg, unsigned part), void *arg, unsigned parts);
+
 /* ---- Video --------------------------------------------------------------- */
 
 /* Allocates the emulator's RGB565 frame buffer. PITCH is in bytes. */

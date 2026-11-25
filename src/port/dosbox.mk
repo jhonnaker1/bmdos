@@ -35,6 +35,9 @@ DBP_CXXFLAGS := -O2 -DNDEBUG -std=gnu++11 -fomit-frame-pointer -fexceptions \
                 -Wno-address-of-packed-member -Wno-format -Wno-switch -Wno-psabi \
                 -ffunction-sections -D__LIBRETRO__ -DSTATIC_LINKING \
                 -D_FILE_OFFSET_BITS=64 -I$(DBP)/include -w
+# BMDOS's hooks in DOSBox Pure (src/patches/dosbox_pure_core_pool_patch.diff):
+# the 3dfx Voodoo's triangles drawn on the Pi's other cores, and times.
+DBP_CXXFLAGS += -DBMDOS_CORE_POOL
 
 # Its time, and its emulation thread's sleeps, are BMDOS's (src/port/clock.c):
 # the kernel's clock on the Pi, the simulator's virtual one on a PC.

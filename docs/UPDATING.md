@@ -31,8 +31,8 @@ To move to a newer DOSBox Pure:
    that `core_environment()` answers no to, files added under `src/` that
    need something newlib lacks, and changes to `dbp_threads.h` (BMDOS's
    threads are cooperative: a thread that spins on an atomic, waiting for
-   another, would never let it run; the Voodoo's drawing threads are kept
-   off for that, `dosbox_pure_voodoo_perf`).
+   another, would never let it run; the Voodoo's drawing threads are
+   BMDOS's core pool instead, `src/patches/dosbox_pure_core_pool_patch.diff`).
 3. Check the licences of any new files: BMDOS is GPLv3, so every file must
    be GPL 2 or later, or a licence compatible with it (list them in
    `sdcard/licenses/dosbox-pure.txt`).

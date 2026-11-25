@@ -59,6 +59,16 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
   said "Unable to open CD-ROM image file". BMDOS's one change to DOSBox
   Pure, `src/patches/dosbox_pure_volume_path_patch.diff`, applied by the
   Makefiles; test `usbimage`. ZIPs on sticks worked already
+- The 3dfx Voodoo's triangles are drawn on three cores: core 1 and the
+  Pi's otherwise idle cores 2 and 3 (`src/corepool.h`; DOSBox Pure's own
+  worker threads can't run on BMDOS's cooperative threads,
+  `src/patches/dosbox_pure_core_pool_patch.diff`). Not with smoothed or
+  CRT pictures on the Pi 4, whose cores 2 and 3 draw those
+- DOSBox Pure's automatic cycles fill 80% of a frame (Limit CPU Usage),
+  not 100%: BMDOS's own work on the same core made frames late, and the
+  sound crackled
+- Every 10 s the log has "PC parts": how much of the time the Voodoo, the
+  sound and the SoundFont synthesizer took
 
 From BMMacintosh 0.3.1:
 
