@@ -34,8 +34,6 @@
  *
  * BMDOS_SIM_POOL=N: N threads for the core pool (src/host.h), 2 by
  * default (0: none).
- * BMDOS_SIM_HELPER=1 gives it a helper core (src/host.h), a thread, as the
- * Pi 5 has (BMDOS doesn't use it yet).
  *
  * With BMDOS_LIVE=PORT it runs in real time instead, with no script: the
  * screen, keyboard, gamepads and sound are in a web page at
@@ -201,60 +199,6 @@ void host_yield(void)
 		now = real_time();
 	else
 		now += 1e-7;
-}
-
-/* ---- The helper core: a thread (BMDOS_SIM_HELPER=1) ------------------------- */
-
-static pthread_t helper_thread;
-static void (*helper_task)(void *);
-static void *helper_arg;
-static int helper_busy;
-static __thread int on_helper;   /* set on the helper's thread */
-
-int host_helper_available(void)
-{
-	const char *e = getenv("BMDOS_SIM_HELPER");
-	return e != NULL && atoi(e) != 0;
-}
-
-static void *helper_main(void *unused)
-{
-	on_helper = 1;
-	helper_task(helper_arg);
-	__atomic_store_n(&helper_busy, 0, __ATOMIC_RELEASE);
-	return NULL;
-}
-
-int host_helper_start(void (*task)(void *arg), void *arg)
-{
-	if (!host_helper_available() || __atomic_load_n(&helper_busy, __ATOMIC_ACQUIRE))
-		return -1;
-	if (helper_thread)
-		pthread_join(helper_thread, NULL);
-	helper_task = task;
-	helper_arg = arg;
-	__atomic_store_n(&helper_busy, 1, __ATOMIC_RELEASE);
-	if (pthread_create(&helper_thread, NULL, helper_main, NULL) != 0) {
-		helper_thread = 0;
-		__atomic_store_n(&helper_busy, 0, __ATOMIC_RELEASE);
-		return -1;
-	}
-	return 0;
-}
-
-int host_helper_busy(void)
-{
-	return __atomic_load_n(&helper_busy, __ATOMIC_ACQUIRE);
-}
-
-int host_on_helper(void)
-{
-	return on_helper;
-}
-
-void host_helper_sleep_us(unsigned us)
-{
-	usleep(us);
 }
 
 /* ---- The core pool (src/host.h) ------------------------------------------- */

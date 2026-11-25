@@ -37,29 +37,11 @@ void host_sleep_us(unsigned us);
 /* Lets Circle's tasks (VCHIQ, USB) run. Call regularly. */
 void host_yield(void);
 
-/* ---- A helper core --------------------------------------------------------- */
-
-/* A core of its own for one long-running task at a time (BMNeXT's
-   NeXTdimension i860 had it; BMDOS doesn't use it yet): the Pi 5's
-   core 3, a thread in the PC simulator.
-   host_helper_start() returns 0 when TASK is started, -1 when there is no
-   helper (the Pi 4) or it is busy. The task must not use Circle's
-   scheduler, the network or the files: it sleeps with
-   host_helper_sleep_us(), and only the emulator's core prints. */
-int host_helper_available(void);
-int host_helper_start(void (*task)(void *arg), void *arg);
-/* Whether the task started last is still running. */
-int host_helper_busy(void);
-/* Whether the caller is the helper's task. */
-int host_on_helper(void);
-void host_helper_sleep_us(unsigned us);
-
 /* ---- The other cores, for work split in parts ------------------------------ */
 
 /* The cores that help with host_pool_run(): the Pi's cores 2 and 3 when
-   they aren't drawing smoothed or CRT pictures (and, on the Pi 5, core 3
-   whenever it has no helper task), threads in the PC simulator; 0 if
-   there are none. DOSBox Pure's 3dfx Voodoo draws its triangles with them
+   they aren't drawing smoothed or CRT pictures, threads in the PC
+   simulator; 0 if there are none. DOSBox Pure's 3dfx Voodoo draws its triangles with them
    (src/patches/dosbox_pure_core_pool_patch.diff). */
 unsigned host_pool_cores(void);
 /* Runs FN(ARG, part) once for each part from 0 to PARTS - 1, the caller

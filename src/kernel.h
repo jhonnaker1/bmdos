@@ -62,7 +62,8 @@
 enum TShutdownMode { ShutdownNone, ShutdownHalt, ShutdownReboot };
 
 #ifdef ARM_ALLOW_MULTI_CORE
-// Runs the emulator on core 1. Cores 2 and 3 are left idle.
+// Runs the emulator on core 1. Cores 2 and 3 help it (src/corepool.h) or
+// draw smoothed and CRT pictures (src/av/video.h).
 class CEmulatorCore : public CMultiCoreSupport {
 public:
   CEmulatorCore(CMemorySystem *pMemorySystem);

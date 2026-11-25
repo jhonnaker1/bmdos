@@ -172,7 +172,7 @@ Useful settings, as environment variables:
 | `BMDOS_WIFI`                | Pretend Wi-Fi is running, with a few networks to choose from |
 | `BMDOS_REFRESH_LATER`       | Change the display's refresh rate to this at frame 30      |
 | `BMDOS_USB`                 | This many USB sticks plugged in from the start (the folders `usb/`, `usb2/`, `usb3/`); the script's `usb 1 1` plugs stick 1 in, `usb 1 0` pulls it out |
-| `BMDOS_SIM_HELPER`          | `1`: a helper core (a thread), as on the Pi 5 (BMDOS doesn't use it yet) |
+| `BMDOS_SIM_POOL`            | Threads for the core pool (the Pi's cores 2 and 3, `src/corepool.h`): 2 by default, `0` for none |
 | `BMDOS_SIM_NO32`            | `1`: no 32-bit frame buffer, so the PC's picture is RGB565 |
 
 ## On the Pi itself
