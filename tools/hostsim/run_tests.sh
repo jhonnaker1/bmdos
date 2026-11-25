@@ -175,13 +175,16 @@ fi
 run coremenu2 "" "$(key $ENTER 200)290 shot before.ppm\n$(key $F12 300)$(key $DOWN 310)$(key $DOWN 315)$(key $DOWN 320)$(key $ENTER 330)400 shot after.ppm\n401 quit\n"
 differ coremenu2 before after
 # Restart the PC (the third item): the core starts again.
-run restart "content=$ZIP" "$(key $F12 200)$(key $DOWN 210)$(key $DOWN 215)$(key $ENTER 220)400 quit\n"
+# Then the keyboard must still reach DOSBox Pure's start menu: Down and
+# Enter choose JOY.COM (DOSBox Pure sets its keyboard callback only once).
+run restart "content=$ZIP" "$(key $F12 200)$(key $DOWN 210)$(key $DOWN 215)$(key $ENTER 220)$(key $DOWN 400)$(key $ENTER 410)500 quit\n"
 check_log restart "starting the PC again" "Restart the PC"
 if [ "$(grep -c "DOSBox Pure running" "$OUT/restart/log.txt")" -ge 2 ]; then
     pass "restart: DOSBox Pure ran again"
 else
     fail "restart" "DOSBox Pure didn't start again"
 fi
+check_log restart "Program: JOY" "the keyboard works after the restart"
 
 echo "The web UI's Run, and content that isn't there"
 run webrun "" "200 run $ZIP\n500 quit\n"

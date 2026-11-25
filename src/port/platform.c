@@ -392,6 +392,7 @@ void bmdos_sound_counts(unsigned long long *frames, unsigned long long *loud)
 /* ---- Input ------------------------------------------------------------------- */
 
 static retro_keyboard_event_t keyboard_cb;
+static int core_ready;            /* retro_load_game() succeeded */
 static int open_menu;
 static int pad_last_menu[HOST_PADS];
 static int mouse_dx, mouse_dy, mouse_buttons;
@@ -523,7 +524,7 @@ static void key_event(int usage, int pressed)
 		m |= RETROKMOD_ALT;
 	if (mods & 0x88)
 		m |= RETROKMOD_META;
-	if (keyboard_cb != NULL)
+	if (keyboard_cb != NULL && core_ready)
 		keyboard_cb(pressed != 0, code, 0, (uint16_t) m);
 }
 
@@ -583,7 +584,6 @@ static void release_keys(void)
 
 static char system_dir[512];
 static char save_dir[512];
-static int core_ready;            /* retro_load_game() succeeded */
 void bmdos_apply_pad_types(void);
 static int core_shut_down;        /* RETRO_ENVIRONMENT_SHUTDOWN */
 
@@ -910,7 +910,8 @@ static void stop_core(void)
 {
 	retro_unload_game();
 	core_ready = FALSE;
-	keyboard_cb = NULL;
+	/* keyboard_cb stays: DOSBox Pure sets it once, in retro_init(), not
+	   for each game, so a PC started again without it got no keys. */
 	memset(key_down, 0, sizeof key_down);
 }
 
