@@ -507,6 +507,11 @@ static void key_event(int usage, int pressed)
 {
 	unsigned code = bmdos_usage_to_retrok(usage);
 	unsigned mods = host_key_modifiers(), m = 0;
+	/* debug_keys=1: each key in the log, to find a key that doesn't reach
+	   DOSBox Pure (off by default: it would log what is typed). */
+	if (host_option_int("debug_keys", 0))
+		LOG("key %02x %s, modifiers %02x: RETROK %u%s\n", usage, pressed ? "down" : "up", mods,
+		    code, keyboard_cb != NULL ? "" : " (DOSBox Pure has no keyboard callback)");
 	if (code == RETROK_UNKNOWN || code >= RETROK_LAST)
 		return;
 	key_down[code] = pressed != 0;
