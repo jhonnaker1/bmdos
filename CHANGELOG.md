@@ -67,6 +67,9 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
 - DOSBox Pure's automatic cycles fill 80% of a frame (Limit CPU Usage),
   not 100%: BMDOS's own work on the same core made frames late, and the
   sound crackled
+- A frame that takes longer than one display refresh is shown at once
+  instead of at the refresh after next: 3D games whose frames took a
+  little over one ran at 55-75%
 - Every 10 s the log has "PC parts": how much of the time the Voodoo, the
   sound and the SoundFont synthesizer took
 

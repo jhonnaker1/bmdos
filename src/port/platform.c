@@ -1174,15 +1174,32 @@ static void not_started(void)
 	}
 }
 
+/* Shows the frame. A frame that took longer than one of the display's
+   refreshes has missed the vertical blank it was for: waiting for the next
+   one would make it take two, and a 3D game whose frames take a little
+   more than one ran at half speed or so (55-75% in the log). So a late
+   frame is shown at once (the display still flips at a blank, and the
+   buffer drawn into next is waited for), and only frames in time wait,
+   which keeps the PC at the display's pace (DOSBox Pure runs a refresh's
+   worth of PC time a frame). */
 static void show_frame(void)
 {
+	static double last_shown;
+	double now;
+	int late;
 	if (osd_view)
 		return;
 	if (depth == 32)
 		osd_draw_notification(fb32_pixels, fb32_pitch_px, 32, pic_w, pic_h);
 	else
 		osd_draw_notification(fb_pixels, fb_pitch_px, 16, pic_w, pic_h);
-	host_video_present(TRUE);
+	now = host_time();
+	/* Presenting takes a little more first (Circle's tasks get 1 ms,
+	   kernel.cpp's VideoPresent()). Taken for late by mistake, a frame is
+	   still shown at the next blank, and the next one waits. */
+	late = last_shown > 0.0 && now - last_shown > 1.0 / refresh_rate - 0.0025;
+	host_video_present(!late);
+	last_shown = host_time();
 }
 
 void bmdos_main(void)
