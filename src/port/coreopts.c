@@ -51,6 +51,13 @@ const char *bmdos_option_bmdos_default(const char *key)
 	   BMDOS's cooperative threads (circle/threads.c): one thread. */
 	if (strcmp(key, "dosbox_pure_voodoo_perf") == 0)
 		return "0";
+	/* With automatic cycles DOSBox Pure fills this much of each frame.
+	   Elsewhere its thread runs beside the frontend's; here it takes
+	   turns with BMDOS's work on one core, so at 100% a frame took longer
+	   than the display's refresh: Doom, Duke 3D and Tomb Raider ran at
+	   50-80% on the Pi 5, and the sound ran dry (crackling). */
+	if (strcmp(key, "dosbox_pure_cycle_limit") == 0)
+		return "0.8";
 	/* A USB mouse moves the DOS mouse (the core's default, a touch pad's
 	   absolute position, is for touch screens). */
 	if (strcmp(key, "dosbox_pure_mouse_input") == 0)
