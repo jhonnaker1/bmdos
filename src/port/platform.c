@@ -1037,6 +1037,9 @@ void bmdos_idle(void)
 
 /* ---- Speed, for the log ----------------------------------------------------- */
 
+/* src/port/dosstatus.cpp: the PC's CPU core, cycles, clock and CS:IP. */
+void bmdos_dosbox_status(char *text, size_t size);
+
 static unsigned speed_frames;
 static double speed_since, speed_core;
 static int speed_percent = 100, core_percent;
@@ -1066,6 +1069,11 @@ static void report_speed(double now)
 	    "frames: tasks %.0f%% log %.0f%% picture %.0f%%\n",
 	    speed_percent, speed_frames, span, mhz, celsius, core_percent,
 	    tasks * 100.0 / span, log * 100.0 / span, picture * 100.0 / span);
+	if (core_ready) {
+		char pc[160];
+		bmdos_dosbox_status(pc, sizeof pc);
+		LOG("PC: %s\n", pc);
+	}
 	sound_report();
 	speed_since = now;
 	speed_frames = 0;
