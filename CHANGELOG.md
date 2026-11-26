@@ -74,6 +74,10 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
   took it for the first one started again, so its changed files went
   into the first game's save (`dos/saves/`), and Run Nothing ran the last
   game again (`src/patches/dosbox_pure_unload_patch.diff`, test `nothing`)
+- Three picture buffers on the Pi 4 and 5's direct display (two only if
+  three don't fit in the Pi 5's framebuffer): with two, a frame waited for
+  the vertical blank that showed the one before, and Tomb Raider spent a
+  quarter of its time waiting (80-90% speed)
 - Every 10 s the log has "PC parts": how much of the time the Voodoo, the
   sound and the SoundFont synthesizer took
 

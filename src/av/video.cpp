@@ -81,7 +81,7 @@ Pi4Video::Pi4Video(void)
   for (unsigned i = 0; i < 4; i++) {
     m_pLine[i] = 0;
   }
-  for (unsigned i = 0; i < 2; i++) {
+  for (unsigned i = 0; i < 3; i++) {
     m_pKmsShadow[i] = 0;
     m_bKmsShadowValid[i] = false;
   }
@@ -90,7 +90,7 @@ Pi4Video::Pi4Video(void)
 }
 
 Pi4Video::~Pi4Video(void) {
-  for (unsigned i = 0; i < 2; i++) {
+  for (unsigned i = 0; i < 3; i++) {
     delete[] m_pKmsShadow[i];
   }
   delete m_pKms;
@@ -280,7 +280,7 @@ int Pi4Video::SetDepth(int bits) {
   if (use32 != m_bUse32) {
     m_bUse32 = use32;
     // The other source: every line drawn again.
-    m_bKmsShadowValid[0] = m_bKmsShadowValid[1] = false;
+    ForgetKmsShadows();
   }
   return m_bUse32 ? 32 : 16;
 }
@@ -585,7 +585,7 @@ bool Pi4Video::ResolutionChoice(void) const {
 
 void Pi4Video::Blank(void) {
   if (m_pKms != 0) {
-    m_bKmsShadowValid[0] = m_bKmsShadowValid[1] = false;
+    ForgetKmsShadows();
     m_pKms->Blank();
     return;
   }
@@ -618,7 +618,7 @@ void Pi4Video::SetViewKms(int x, int y, int w, int h, double aspect,
   m_fKmsAspect = aspect;
   m_fKmsScale = scale;
   // New buffers, or the picture somewhere else: drawn whole again.
-  m_bKmsShadowValid[0] = m_bKmsShadowValid[1] = false;
+  ForgetKmsShadows();
 
   const unsigned width = m_pKms->Width(), height = m_pKms->Height();
   // src/av/layout.h: the height filled, the shape kept.
@@ -667,29 +667,36 @@ uint8_t *Pi4Video::KmsShadow(unsigned buffer) {
   // src/port/bigalloc.c), and the view changes with each visit to the menu.
   if (m_pKmsShadow[0] == 0) {
     m_nKmsShadowCap = (size_t)m_nSourceWidth * m_nSourceHeight * 4;
-    m_pKmsShadow[0] = new uint8_t[m_nKmsShadowCap];
-    m_pKmsShadow[1] = new uint8_t[m_nKmsShadowCap];
-    m_bKmsShadowValid[0] = m_bKmsShadowValid[1] = false;
+    for (unsigned i = 0; i < 3; i++) {
+      m_pKmsShadow[i] = new uint8_t[m_nKmsShadowCap];
+    }
+    ForgetKmsShadows();
   }
-  if (m_pKmsShadow[0] == 0 || m_pKmsShadow[1] == 0 ||
+  if (buffer >= 3 || m_pKmsShadow[buffer] == 0 ||
       (size_t)m_nViewW * m_nViewH * SourceBytes() > m_nKmsShadowCap) {
     return 0;
   }
   const unsigned w = (unsigned)m_nViewW, h = (unsigned)m_nViewH;
   const unsigned bytes = SourceBytes();
   if (m_nKmsShadowW != w || m_nKmsShadowH != h || m_nKmsShadowBytes != bytes) {
-    m_bKmsShadowValid[0] = m_bKmsShadowValid[1] = false;
+    ForgetKmsShadows();
     m_nKmsShadowW = w;
     m_nKmsShadowH = h;
     m_nKmsShadowBytes = bytes;
   }
-  return m_pKmsShadow[buffer & 1];
+  return m_pKmsShadow[buffer];
+}
+
+void Pi4Video::ForgetKmsShadows(void) {
+  for (unsigned i = 0; i < 3; i++) {
+    m_bKmsShadowValid[i] = false;
+  }
 }
 
 // True if BUFFER holds the view as it is now.
 bool Pi4Video::KmsShows(unsigned buffer) {
   uint8_t *shadow = KmsShadow(buffer);
-  if (shadow == 0 || !m_bKmsShadowValid[buffer & 1]) {
+  if (shadow == 0 || !m_bKmsShadowValid[buffer]) {
     return false;
   }
   const size_t bytes = (size_t)m_nViewW * SourceBytes();
@@ -707,7 +714,7 @@ void Pi4Video::PresentKms(bool wait_vsync) {
   // now: nothing to draw or show (a big picture, SVGA's 1280x1024, a
   // million pixels, would otherwise be converted and written out sixty
   // times a second). Waits for the vertical blank are still waited for.
-  if (!m_bCrt && !wait_vsync && KmsShows(m_pKms->BackBuffer() ^ 1)) {
+  if (!m_bCrt && !wait_vsync && KmsShows(m_pKms->FrontBuffer())) {
     return;
   }
   unsigned pitch;
@@ -734,7 +741,7 @@ void Pi4Video::PresentKms(bool wait_vsync) {
     // changed since this buffer was last drawn.
     const unsigned back = m_pKms->BackBuffer();
     uint8_t *shadow = KmsShadow(back);
-    const bool known = shadow != 0 && m_bKmsShadowValid[back & 1];
+    const bool known = shadow != 0 && m_bKmsShadowValid[back];
     const size_t bytes = (size_t)m_nViewW * SourceBytes();
     int first = m_nViewH, last = -1;
     for (int y = 0; y < m_nViewH; y++) {
@@ -762,7 +769,7 @@ void Pi4Video::PresentKms(bool wait_vsync) {
       last = y;
     }
     if (shadow != 0) {
-      m_bKmsShadowValid[back & 1] = true;
+      m_bKmsShadowValid[back] = true;
     }
     // Only the lines drawn go from the cache to memory (none: the other
     // buffer is just shown again).

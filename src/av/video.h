@@ -124,6 +124,8 @@ private:
   // it), so only the lines that changed are drawn again.
   uint8_t *KmsShadow(unsigned buffer);
   bool KmsShows(unsigned buffer);
+  // Every buffer to be drawn whole again.
+  void ForgetKmsShadows(void);
   void WaitForVerticalSync(void);
 
 public:
@@ -198,8 +200,8 @@ private:
   unsigned m_nKmsSrcW, m_nKmsSrcH;
   double m_fKmsAspect, m_fKmsScale;  // the last SetViewKms()'s
   bool m_bKmsResize;                 // SetViewKms() again at the next frame
-  uint8_t *m_pKmsShadow[2];          // see KmsShadow()
-  bool m_bKmsShadowValid[2];
+  uint8_t *m_pKmsShadow[3];          // see KmsShadow(); one a buffer
+  bool m_bKmsShadowValid[3];
   unsigned m_nKmsShadowW, m_nKmsShadowH, m_nKmsShadowBytes;
   size_t m_nKmsShadowCap;            // bytes in each
 

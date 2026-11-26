@@ -28,9 +28,12 @@ Display::Display(void)
     : m_bAttached(false), m_pFramebuffer(0), m_nFramebufferBytes(0),
       m_nFramebufferPitch(0), m_bPool(false),
       m_nPoolAddress(0), m_nPitch(0), m_nBufferWords(0), m_nBack(0),
+      m_nBuffers(0), m_nShown(0), m_nQueued(0),
       m_bFlipPending(false), m_nFlipCount(0), m_bHavePicture(false),
       m_bTimedOut(false), m_nFirmwareWidth(0), m_nFirmwareHeight(0) {
-  m_pBuffer[0] = m_pBuffer[1] = 0;
+  for (unsigned i = 0; i < MaxBuffers; i++) {
+    m_pBuffer[i] = 0;
+  }
   memset(&m_Plane, 0, sizeof m_Plane);
 }
 
@@ -43,7 +46,7 @@ void Display::SetFramebuffer(void *base, size_t bytes, unsigned pitch) {
 }
 
 void Display::FreeBuffers(void) {
-  for (unsigned i = 0; i < 2; i++) {
+  for (unsigned i = 0; i < MaxBuffers; i++) {
     if (m_pBuffer[i] != 0 && !m_bPool) {
       CMemorySystem::HeapFree(m_pBuffer[i]);
     }
@@ -60,7 +63,7 @@ uint64_t Display::HvsAddress(const uint32_t *buffer) const {
 }
 
 bool Display::BuffersBelow(uint64_t limit) const {
-  for (unsigned i = 0; i < 2; i++) {
+  for (unsigned i = 0; i < MaxBuffers; i++) {
     if (m_pBuffer[i] != 0 && (uint64_t)(uintptr)(m_pBuffer[i] + m_nBufferWords) > limit) {
       return false;
     }
@@ -115,9 +118,12 @@ bool Display::SetPicture(unsigned src_w, unsigned src_h, unsigned x, unsigned y,
     FreeBuffers();
     // Buffers 4 KB apart.
     size_t bytes = ((size_t)words * 4 + 4095) & ~(size_t)4095;
-    for (unsigned i = 0; i < 2; i++) {
+    // In the framebuffer, three if they fit (a 1280x1024 picture's don't
+    // in a 1920x1080 one: two then).
+    m_nBuffers = !m_bPool || MaxBuffers * bytes <= m_nFramebufferBytes ? MaxBuffers : 2;
+    for (unsigned i = 0; i < m_nBuffers; i++) {
       if (m_bPool) {
-        m_pBuffer[i] = 2 * bytes <= m_nFramebufferBytes
+        m_pBuffer[i] = (i + 1) * bytes <= m_nFramebufferBytes
                            ? (uint32_t *)(m_pFramebuffer + i * bytes)
                            : 0;
       } else {
@@ -133,6 +139,7 @@ bool Display::SetPicture(unsigned src_w, unsigned src_h, unsigned x, unsigned y,
       CleanAndInvalidateDataCacheRange((uintptr)m_pBuffer[i], words * 4);
     }
     m_nBufferWords = words;
+    m_nShown = m_nQueued = m_nBack = 0;
     m_bFlipPending = false;
     m_Plane.address = 0;   // nothing drawn into the new buffers yet
   }
@@ -158,14 +165,24 @@ uint32_t *Display::BeginFrame(unsigned *pitch) {
   if (!m_bHavePicture) {
     return 0;
   }
-  // The back buffer was on screen until the frame after the last flip.
-  if (m_bFlipPending) {
-    if (m_Hvs.FrameCount() == m_nFlipCount &&
-        !WaitForFlip(m_nFlipCount) && !m_bTimedOut) {
+  NoteFlip();
+  if (m_nBuffers < 3 && m_bFlipPending) {
+    // Two buffers: the other one is on screen until the frame after the
+    // last flip.
+    if (!WaitForFlip(m_nFlipCount) && !m_bTimedOut) {
       m_bTimedOut = true;
       CLogger::Get()->Write(FromDisplay, LogWarning, "The HVS has stopped (display off?)");
     }
+    m_nShown = m_nQueued;
     m_bFlipPending = false;
+  }
+  // A buffer neither on screen nor waiting to be: with three there always
+  // is one, so a late frame doesn't wait for the vertical blank.
+  for (unsigned i = 0; i < m_nBuffers; i++) {
+    if (i != m_nShown && !(m_bFlipPending && i == m_nQueued)) {
+      m_nBack = i;
+      break;
+    }
   }
   *pitch = m_nPitch;
   return m_pBuffer[m_nBack];
@@ -186,20 +203,32 @@ void Display::EndFrame(bool wait_vsync, unsigned first_line, unsigned lines) {
     }
   }
   m_Plane.address = HvsAddress(buffer);
+  // A buffer queued before may have reached the screen while this one was
+  // drawn: it is the one on screen then, not free.
+  NoteFlip();
   unsigned now = m_Hvs.FrameCount();
   if (!m_Hvs.Show(&m_Plane)) {
     return;
   }
-  // The frame being composed now still shows the other buffer; from the
-  // next one on, this one. So the other is free once the count moves on.
+  // The frame being composed now still shows the buffer before; from the
+  // next one on, this one (a buffer queued before and never shown is just
+  // free again).
+  m_nQueued = m_nBack;
   m_bFlipPending = true;
   m_nFlipCount = now;
   if (wait_vsync) {
     if (WaitForFlip(now)) {
+      m_nShown = m_nQueued;
       m_bFlipPending = false;
     }
   }
-  m_nBack ^= 1;
+}
+
+void Display::NoteFlip(void) {
+  if (m_bFlipPending && m_Hvs.FrameCount() != m_nFlipCount) {
+    m_nShown = m_nQueued;
+    m_bFlipPending = false;
+  }
 }
 
 // Circle's tasks (the network, Wi-Fi, the web UI) only run when core 1
@@ -284,6 +313,7 @@ void Display::Reinstall(void *param) {
   } else {
     display->m_Hvs.Show(0);
   }
+  display->m_nShown = display->m_nQueued;
   display->m_bFlipPending = false;
 }
 

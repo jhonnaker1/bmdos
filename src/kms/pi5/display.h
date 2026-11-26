@@ -68,8 +68,13 @@ public:
   // Only LINES lines from FIRST_LINE on were drawn into it (all of them
   // by default): only those are written from the cache to memory.
   void EndFrame(bool wait_vsync, unsigned first_line = 0, unsigned lines = ~0u);
-  // Which buffer BeginFrame() gives next (0 or 1); the other is on screen.
+  // The buffer BeginFrame() gave last (0 to 2).
   unsigned BackBuffer(void) const { return m_nBack; }
+  // The buffer shown last (on screen, or from the next frame on).
+  unsigned FrontBuffer(void) const { return m_bFlipPending ? m_nQueued : m_nShown; }
+  // How many buffers there are: 3, so that a frame can be drawn while the
+  // last one waits for the vertical blank, or 2 if 3 don't fit.
+  enum { MaxBuffers = 3 };
 
   // Switches the video mode to run at FPS frames a second, if it can (see
   // modeset.h), at 1920x1080 or 1280x720 if LINES is 1080 or 720 and the
@@ -92,6 +97,8 @@ private:
   uint64_t HvsAddress(const uint32_t *buffer) const;
   // As Hvs::WaitForChange(), running Circle's tasks while it waits.
   bool WaitForFlip(unsigned from);
+  // Notes the queued buffer as on screen once the frame count has moved on.
+  void NoteFlip(void);
 
 public:
   // Clock ticks spent in WaitForFlip() since this was last set to 0, for
@@ -110,11 +117,14 @@ private:
   unsigned m_nFramebufferPitch;
   bool m_bPool;              // the buffers are in the framebuffer
   uint64_t m_nPoolAddress;   // the framebuffer's start, as the HVS sees it
-  uint32_t *m_pBuffer[2];
+  uint32_t *m_pBuffer[MaxBuffers];
+  unsigned m_nBuffers;       // allocated: 2 or 3
   unsigned m_nPitch;         // pixels
   unsigned m_nBufferWords;   // allocated, per buffer
-  unsigned m_nBack;          // buffer drawn next
-  bool m_bFlipPending;       // the back buffer is on screen until...
+  unsigned m_nBack;          // buffer drawn into last (BeginFrame())
+  unsigned m_nShown;         // buffer on screen
+  unsigned m_nQueued;        // buffer shown last (EndFrame())...
+  bool m_bFlipPending;       // ...not on screen until...
   unsigned m_nFlipCount;     // ...the frame count moves on from this
   Plane m_Plane;
   bool m_bHavePicture;
