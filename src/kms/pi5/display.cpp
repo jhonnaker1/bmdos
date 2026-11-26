@@ -213,10 +213,15 @@ void Display::EndFrame(bool wait_vsync, unsigned first_line, unsigned lines) {
   // The frame being composed now still shows the buffer before; from the
   // next one on, this one (a buffer queued before and never shown is just
   // free again).
+  // Late: the vertical blank this frame was for (the one after the frame
+  // before was queued) has passed already. It is shown at the next one
+  // without waiting for it, or it would take two frames' time (the caller
+  // can't tell beforehand how long drawing it takes).
+  const bool late = ((now - m_nFlipCount) & 63) >= 2;
   m_nQueued = m_nBack;
   m_bFlipPending = true;
   m_nFlipCount = now;
-  if (wait_vsync) {
+  if (wait_vsync && !late) {
     if (WaitForFlip(now)) {
       m_nShown = m_nQueued;
       m_bFlipPending = false;
