@@ -4,7 +4,7 @@ BMDOS turns a Raspberry Pi 4 or 5 into an MS-DOS PC for DOS games. It runs
 the DOSBox Pure emulator on the bare hardware, so it starts in a couple of
 seconds and can be switched off at any time.
 
-BMDOS 0.1.0 has been tried on a Pi 5 and a Pi 4 (see the
+BMDOS has been tried on a Pi 5 and a Pi 4 (see the
 [changelog](../CHANGELOG.md) for what was tested where); everything also
 runs in the PC simulator (`tools/hostsim`, see [SIMULATOR.md](SIMULATOR.md)).
 

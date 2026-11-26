@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 – 2026-11-26
 
 - DOSBox Pure's automatic cycles hold steady (`src/patches/dosbox_pure_auto_cycles_patch.diff`):
   they were cut while the emulation had time to spare, when a game spun
@@ -13,6 +13,15 @@
   (once the fan read 2,400,000 °C and went to full speed)
 - A sweep: leftovers from the parent projects in comments, the user
   guide, the simulator's settings, compiler warnings
+
+Tested on a Raspberry Pi 5 (8 GB): Duke Nukem 3D (63-88%, from 56-85%)
+and the Tomb Raider demo (94-100%) with the automatic cycles; no wrong
+clock or temperature readings and the fan normal with the firmware
+requests locked. Also on the Pi 5 since 0.1.0's notes: Tomb Raider no
+longer runs faster than 100% (the pacing fix 0.1.0 had untried), a
+SanDisk USB stick mounted as `USB:`, the mouse. Not yet on a Pi 4: the
+changes since 0.1.0. Not tried on a Pi: exFAT sticks, gamepads, FujiNet,
+the web UI. Everything passes in the PC simulator (51 checks).
 
 ## 0.1.0 – 2026-11-25
 
