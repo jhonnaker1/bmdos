@@ -185,6 +185,17 @@ else
     fail "restart" "DOSBox Pure didn't start again"
 fi
 check_log restart "Program: JOY" "the keyboard works after the restart"
+# Run Nothing (the second item): DOSBox Pure forgets the ZIP. It took a
+# load after an unload for the same content again (its own frontends unload
+# the core in between), so the ZIP's start menu came back, and the next
+# game's changed files went into the first one's save.
+run nothing "content=$ZIP" "$(key $F12 200)$(key $DOWN 210)$(key $ENTER 220)$(key $DOWN 400)$(key $ENTER 410)500 quit\n"
+check_log nothing "starting with no content" "Run Nothing"
+if sed -n '/starting with no content/,$p' "$OUT/nothing/log.txt" | grep -q "Program: JOY"; then
+    fail "nothing" "the ZIP's start menu came back after Run Nothing"
+else
+    pass "nothing: the ZIP is gone after Run Nothing"
+fi
 
 echo "The web UI's Run, and content that isn't there"
 run webrun "" "200 run $ZIP\n500 quit\n"

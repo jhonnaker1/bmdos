@@ -4,9 +4,10 @@ DOSBox Pure's libretro core expects a desktop system: threads, a C library
 with all of POSIX. On the Pi, BMDOS runs it on Circle with circle-stdlib's
 newlib and the Arm toolchain's libstdc++, which have the C library but no
 threads. This folder is what DOSBox Pure needs beyond those, so that it
-builds without changes for Circle (the Makefile's `DBP_PI_FLAGS`; its two
-changes, in `src/patches/`, are a fix for USB sticks' paths and the
-Voodoo's workers on the other cores). From BMAmiga, where
+builds without changes for Circle (the Makefile's `DBP_PI_FLAGS`; its
+changes, in `src/patches/`, are a fix for USB sticks' paths, the Voodoo's
+workers on the other cores, and content changed without unloading the
+core). From BMAmiga, where
 Amiberry's libretro core runs on the same.
 
 ## Threads (`threads.c`, `libco/`)

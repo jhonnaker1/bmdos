@@ -1,0 +1,17 @@
+diff --git a/dosbox_pure_libretro.cpp b/dosbox_pure_libretro.cpp
+index ea24d45..05499cc 100644
+--- a/dosbox_pure_libretro.cpp
++++ b/dosbox_pure_libretro.cpp
+@@ -3367,6 +3367,12 @@ void retro_get_system_av_info(struct retro_system_av_info *info) // #5
+ void retro_unload_game(void)
+ {
+ 	DBP_Shutdown();
++	// BMDOS: the next retro_load_game() is new content, as after retro_deinit() and retro_init()
++	// (BMDOS keeps the core and loads one game after another; without this the next one was taken
++	// for the same content started again: its name, which names the save file, and its images kept)
++	dbp_wasloaded = false;
++	dbp_content_path.clear();
++	dbp_content_name.clear();
+ }
+ 
+ void retro_set_controller_port_device(unsigned port, unsigned device) //#5

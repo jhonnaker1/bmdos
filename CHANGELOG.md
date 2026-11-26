@@ -70,6 +70,10 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
 - A frame that takes longer than one display refresh is shown at once
   instead of at the refresh after next: 3D games whose frames took a
   little over one ran at 55-75%
+- A game started from the menu after another is that game: DOSBox Pure
+  took it for the first one started again, so its changed files went
+  into the first game's save (`dos/saves/`), and Run Nothing ran the last
+  game again (`src/patches/dosbox_pure_unload_patch.diff`, test `nothing`)
 - Every 10 s the log has "PC parts": how much of the time the Voodoo, the
   sound and the SoundFont synthesizer took
 
