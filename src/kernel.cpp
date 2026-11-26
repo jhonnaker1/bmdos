@@ -1237,6 +1237,14 @@ void host_network_status(char *text, unsigned size) {
 
 double host_time(void) { return CKernel::Get()->Time(); }
 
+double host_video_wait_time(void) {
+#if RASPPI >= 4
+  return Pi4Video::TakeWaitTime();
+#else
+  return 0.0;
+#endif
+}
+
 void host_video_times(double *tasks, double *log, double *picture) {
 #if RASPPI >= 4
   *tasks = (double)s_PresentTicks[0] / CLOCKHZ;

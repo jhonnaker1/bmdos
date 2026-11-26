@@ -1113,9 +1113,10 @@ static void report_speed(double now)
 	host_cpu_status(&mhz, &celsius);
 	host_video_times(&tasks, &log, &picture);
 	LOG("speed %d%% (%u frames in %.1f s), ARM %u MHz %u C; DOSBox %d%%, "
-	    "frames: tasks %.0f%% log %.0f%% picture %.0f%%\n",
+	    "frames: tasks %.0f%% log %.0f%% picture %.0f%% (waiting for the display %.0f%%)\n",
 	    speed_percent, speed_frames, span, mhz, celsius, core_percent,
-	    tasks * 100.0 / span, log * 100.0 / span, picture * 100.0 / span);
+	    tasks * 100.0 / span, log * 100.0 / span, picture * 100.0 / span,
+	    host_video_wait_time() * 100.0 / span);
 	if (core_ready) {
 		char pc[160];
 		bmdos_dosbox_status(pc, sizeof pc);
@@ -1129,6 +1130,19 @@ static void report_speed(double now)
 	memset(prof_ticks, 0, sizeof prof_ticks);
 	sound_report();
 	speed_since = now;
+	speed_frames = 0;
+	speed_core = 0.0;
+}
+
+/* After the menu: its time isn't the PC's, so the next report counts from
+   now (a Tomb Raider report took in 45 s of menu and read 15%). */
+static void restart_speed_count(void)
+{
+	double tasks, log, picture;
+	host_video_times(&tasks, &log, &picture);
+	host_video_wait_time();
+	memset(prof_ticks, 0, sizeof prof_ticks);
+	speed_since = host_time();
 	speed_frames = 0;
 	speed_core = 0.0;
 }
@@ -1259,6 +1273,7 @@ void bmdos_main(void)
 			bmdos_menu();
 			release_keys();
 			apply_view();
+			restart_speed_count();
 			if (restart_wanted)
 				continue;
 		}

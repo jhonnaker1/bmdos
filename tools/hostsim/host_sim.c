@@ -166,6 +166,11 @@ static double real_time(void)
 	return t - start;
 }
 
+double host_video_wait_time(void)
+{
+	return 0.0;
+}
+
 void host_video_times(double *tasks, double *log, double *picture)
 {
 	*tasks = *log = *picture = 0;

@@ -519,7 +519,16 @@ void Pi4Video::Present(bool wait_vsync) {
 // due, and only the rest of the frame is spent in the mailbox call. The
 // period is the shortest seen between two waits: a missed blank only makes
 // one longer, and the firmware's mode doesn't change while running.
+u64 Pi4Video::s_nFbWaitTicks;
+
+double Pi4Video::TakeWaitTime(void) {
+  u64 ticks = s_nFbWaitTicks + kms::Display::s_nWaitTicks;
+  s_nFbWaitTicks = kms::Display::s_nWaitTicks = 0;
+  return (double)ticks / CLOCKHZ;
+}
+
 void Pi4Video::WaitForVerticalSync(void) {
+  u64 wait_start = CTimer::GetClockTicks64();
   if (m_nVsyncPeriod > VsyncMarginTicks) {
     u64 due = m_nLastVsync + m_nVsyncPeriod - VsyncMarginTicks;
     while ((s64)(CTimer::GetClockTicks64() - due) < 0) {
@@ -528,6 +537,7 @@ void Pi4Video::WaitForVerticalSync(void) {
   }
   m_pFrameBuffer->WaitForVerticalSync();
   u64 now = CTimer::GetClockTicks64();
+  s_nFbWaitTicks += now - wait_start;
   if (m_nLastVsync != 0) {
     u64 period = now - m_nLastVsync;
     if (m_nVsyncPeriod == 0 || period < m_nVsyncPeriod) {

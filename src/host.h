@@ -192,6 +192,9 @@ void host_cpu_status(unsigned *mhz, unsigned *celsius);
    the kernel's tasks, writing the log, and the picture (0 where it isn't
    measured). */
 void host_video_times(double *tasks, double *log, double *picture);
+/* Of the picture's time: seconds spent waiting for the display (its
+   vertical blank, or a flip) since the last call. */
+double host_video_wait_time(void);
 /* A Wi-Fi network found by host_wifi_scan(). signal is in dBm. */
 struct host_wifi_ap {
 	char ssid[33];

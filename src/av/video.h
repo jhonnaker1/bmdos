@@ -125,6 +125,14 @@ private:
   uint8_t *KmsShadow(unsigned buffer);
   bool KmsShows(unsigned buffer);
   void WaitForVerticalSync(void);
+
+public:
+  // Seconds spent waiting for the display (a vertical blank, or a flip)
+  // since the last call, for the log.
+  static double TakeWaitTime(void);
+
+private:
+  static u64 s_nFbWaitTicks;
   bool DrawnByArm(void) const;
   bool Can32(void) const;
   // The source shown: its line and its bytes a pixel.

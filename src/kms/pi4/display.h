@@ -76,6 +76,13 @@ private:
   void FreeBuffers(void);
   // As Hvs::WaitForChange(), running Circle's tasks while it waits.
   bool WaitForFlip(unsigned from);
+
+public:
+  // Clock ticks spent in WaitForFlip() since this was last set to 0, for
+  // the log (host_video_wait_time()).
+  static uint64_t s_nWaitTicks;
+
+private:
   // Puts the picture's display list back (after the channel restarts).
   static void Reinstall(void *param);
 

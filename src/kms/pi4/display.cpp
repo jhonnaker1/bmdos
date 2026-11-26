@@ -161,16 +161,21 @@ void Display::EndFrame(bool wait_vsync, unsigned first_line, unsigned lines) {
 // vc_dispmanx_update_submit_sync() does (Circle's addon/linux semaphores
 // yield while they wait). Spinning instead leaves them one turn a frame,
 // which is far too little for the Wi-Fi driver.
+uint64_t Display::s_nWaitTicks;
+
 bool Display::WaitForFlip(unsigned from) {
   u64 start = CTimer::GetClockTicks64();
   u64 limit = (u64)FrameTimeoutMs * (CLOCKHZ / 1000);
+  bool flipped = true;
   while (m_Hvs.FrameCount() == from) {
     if (CTimer::GetClockTicks64() - start > limit) {
-      return false;
+      flipped = false;
+      break;
     }
     CScheduler::Get()->Yield();
   }
-  return true;
+  s_nWaitTicks += CTimer::GetClockTicks64() - start;
+  return flipped;
 }
 
 bool Display::MatchRate(double fps, unsigned audio_fs) {

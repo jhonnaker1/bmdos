@@ -204,16 +204,21 @@ void Display::EndFrame(bool wait_vsync, unsigned first_line, unsigned lines) {
 
 // Circle's tasks (the network, Wi-Fi, the web UI) only run when core 1
 // yields, so the wait for the next frame runs them.
+uint64_t Display::s_nWaitTicks;
+
 bool Display::WaitForFlip(unsigned from) {
   u64 start = CTimer::GetClockTicks64();
   u64 limit = (u64)FrameTimeoutMs * (CLOCKHZ / 1000);
+  bool flipped = true;
   while (m_Hvs.FrameCount() == from) {
     if (CTimer::GetClockTicks64() - start > limit) {
-      return false;
+      flipped = false;
+      break;
     }
     CScheduler::Get()->Yield();
   }
-  return true;
+  s_nWaitTicks += CTimer::GetClockTicks64() - start;
+  return flipped;
 }
 
 bool Display::MatchRate(double fps, unsigned audio_fs, unsigned lines) {
