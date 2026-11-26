@@ -715,6 +715,10 @@ void Pi4Video::PresentKms(bool wait_vsync) {
   // million pixels, would otherwise be converted and written out sixty
   // times a second). Waits for the vertical blank are still waited for.
   if (!m_bCrt && !wait_vsync && KmsShows(m_pKms->FrontBuffer())) {
+    // Still a frame: the next one is late only from two blanks after this
+    // (Tomb Raider draws every other frame, and frames after these skips
+    // weren't waited for: 106%).
+    m_pKms->SkipFrame();
     return;
   }
   unsigned pitch;

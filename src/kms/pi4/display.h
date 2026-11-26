@@ -59,6 +59,9 @@ public:
   void EndFrame(bool wait_vsync, unsigned first_line = 0, unsigned lines = ~0u);
   // The buffer BeginFrame() gave last (0 to 2).
   unsigned BackBuffer(void) const { return m_nBack; }
+  // A frame not drawn because the picture shown is the same: counts as
+  // shown now, for telling whether the next one is late (EndFrame()).
+  void SkipFrame(void);
   // The buffer shown last (on screen, or from the next frame on).
   unsigned FrontBuffer(void) const { return m_bFlipPending ? m_nQueued : m_nShown; }
   // How many buffers there are: 3, so that a frame can be drawn while the
@@ -105,6 +108,7 @@ private:
   unsigned m_nQueued;        // buffer shown last (EndFrame())...
   bool m_bFlipPending;       // ...not on screen until...
   unsigned m_nFlipCount;     // ...the frame count moves on from this
+  unsigned m_nPaceCount;     // the frame count at the last frame (or skip)
   Plane m_Plane;
   bool m_bHavePicture;
   bool m_bTimedOut;

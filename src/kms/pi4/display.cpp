@@ -27,7 +27,7 @@ static const unsigned FrameTimeoutMs = 100;
 
 Display::Display(void)
     : m_bAttached(false), m_nPitch(0), m_nBufferWords(0), m_nBack(0),
-      m_nBuffers(0), m_nShown(0), m_nQueued(0),
+      m_nBuffers(0), m_nShown(0), m_nQueued(0), m_nPaceCount(0),
       m_bFlipPending(false), m_nFlipCount(0), m_bHavePicture(false),
       m_bTimedOut(false) {
   for (unsigned i = 0; i < MaxBuffers; i++) {
@@ -169,7 +169,8 @@ void Display::EndFrame(bool wait_vsync, unsigned first_line, unsigned lines) {
   // before was queued) has passed already. It is shown at the next one
   // without waiting for it, or it would take two frames' time (the caller
   // can't tell beforehand how long drawing it takes).
-  const bool late = ((now - m_nFlipCount) & 63) >= 2;
+  const bool late = ((now - m_nPaceCount) & 63) >= 2;
+  m_nPaceCount = now;
   m_nQueued = m_nBack;
   m_bFlipPending = true;
   m_nFlipCount = now;
@@ -178,6 +179,12 @@ void Display::EndFrame(bool wait_vsync, unsigned first_line, unsigned lines) {
       m_nShown = m_nQueued;
       m_bFlipPending = false;
     }
+  }
+}
+
+void Display::SkipFrame(void) {
+  if (m_bHavePicture) {
+    m_nPaceCount = m_Hvs.FrameCount();
   }
 }
 
