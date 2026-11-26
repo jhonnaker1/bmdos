@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 – 2026-11-25
 
 The first BMDOS: a bare metal MS-DOS PC for DOS games, with
 [DOSBox Pure](https://codeberg.org/schelling/dosbox-pure) (1.0-preview8,
@@ -56,8 +56,8 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
 
 - A disk image (ISO, CUE, IMG) on a USB stick mounts: DOSBox Pure looked
   for `USB:/NAME` in the content's own folder (`USB:/USB:/NAME`) and
-  said "Unable to open CD-ROM image file". BMDOS's one change to DOSBox
-  Pure, `src/patches/dosbox_pure_volume_path_patch.diff`, applied by the
+  said "Unable to open CD-ROM image file". A change to DOSBox Pure,
+  `src/patches/dosbox_pure_volume_path_patch.diff`, applied by the
   Makefiles; test `usbimage`. ZIPs on sticks worked already
 - The 3dfx Voodoo's triangles are drawn on three cores: core 1 and the
   Pi's otherwise idle cores 2 and 3 (`src/corepool.h`; DOSBox Pure's own
@@ -85,6 +85,8 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
 - From BMAmiga: USB sticks formatted exFAT (`circle_fatfs_exfat_patch`),
   and USB mouse receivers whose report descriptor has a vendor collection
   before the mouse (`circle_usb_mouse_usage_page_patch`)
+- The Pi 4 runs at 1.8 GHz (`arm_freq=1800` in `config.txt`), the clock
+  of the Pi 4 B from revision 1.4 on and of the Pi 400
 - Every 10 s the log has "PC parts": how much of the time the Voodoo, the
   sound and the SoundFont synthesizer took
 
@@ -98,11 +100,26 @@ Left out: the PC's network (DOSBox Pure's modem and IPX need a libretro
 frontend's netplay), OpenGL Voodoo (the software one is there), the
 32-bit kernels' dynamic recompiler.
 
-Tested in the PC simulator only (`tools/hostsim`, 48 checks; and EGA
-Trek from a ZIP): DOSBox Pure's start menu and DOS prompt, the keyboard,
-the PC speaker, a gamepad as keys and as a PC joystick, the menu and
-settings, USB sticks, the web UI's requests. The Pi 4 and Pi 5 kernels
-build; **not yet tried on a Pi**.
+Tested on a Raspberry Pi 5 (8 GB) and a Pi 4 B (4 GB, at 1.8 GHz), HDMI
+at 1920x1080, a USB keyboard and mouse, Wi-Fi, games from ZIPs on the SD
+card:
+
+- Commander Keen 1, Second Reality (Gravis UltraSound) and TopBench at
+  full speed on both; Doom; One Must Fall 2097 (about 90%); Duke Nukem
+  3D (about 85% on both); the Tomb Raider demo with the 3dfx Voodoo
+  (full speed on the Pi 5, about 80-85% on the Pi 4). Sound without
+  crackling, no tearing or flicker
+- MS-DOS 6.22 and FreeDOS 1.4 started from their disk images
+  (`dos/system`); a CD image (ISO) and a CUE/BIN with a CD audio track,
+  heard, on the Pi 4
+- Changing games from the menu, Run Nothing, Restart the PC; logging to
+  the card; the time from the network
+
+Not tried on a Pi: the last pacing fix (frames skipped for an unchanged
+picture; Tomb Raider briefly ran at 101-106% before it), exFAT and FAT32
+USB sticks, the USB mouse receiver fix, the sound buffer's floor,
+gamepads, FujiNet, the web UI, the Pi 400, 500 and 500+. These, and
+everything above, pass in the PC simulator (`tools/hostsim`, 51 checks).
 
 ## Earlier: BMNeXT
 

@@ -19,11 +19,13 @@ BMDOS wouldn't be possible without the work behind the open source
 projects it builds on. Thanks to their authors and contributors for making
 it available; see the [third-party](docs/THIRD_PARTY.md) acknowledgements.
 
-**Status:** version 0.1.0, not yet released. It has run only in the PC
-simulator (`tools/hostsim`): DOSBox Pure's start menu, its DOS prompt, a
-game from a ZIP, the PC speaker, the keyboard and a gamepad (as keys and as
-a PC joystick). The Pi 4 and Pi 5 kernels build, but **haven't been tried
-on a Pi yet**.
+**Status:** version 0.1.0 (2026-11-25), the first release. Tried on a
+Raspberry Pi 5 and a Pi 4: Commander Keen, Doom, Second Reality, One Must
+Fall 2097, Duke Nukem 3D and the 3dfx Tomb Raider demo, MS-DOS 6.22 and
+FreeDOS from disk images, and CD images with CD audio. 3D games run at or
+near full speed on the Pi 5 and somewhat slower on the Pi 4. USB sticks,
+gamepads, FujiNet and the web UI have so far been tried only in the PC
+simulator (`tools/hostsim`). See the [changelog](CHANGELOG.md).
 
 - DOS games from a ZIP, as they are downloaded: DOSBox Pure lists the
   programs in it and starts the one you choose (and can remember it)
