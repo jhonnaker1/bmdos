@@ -1,0 +1,68 @@
+diff --git a/dosbox_pure_libretro.cpp b/dosbox_pure_libretro.cpp
+index ea24d45..6d8904d 100644
+--- a/dosbox_pure_libretro.cpp
++++ b/dosbox_pure_libretro.cpp
+@@ -64,6 +64,9 @@ static bool dbp_optionsupdatecallback, dbp_reboot_set64mem, dbp_use_network, dbp
+ static signed char dbp_menu_time, dbp_conf_loading, dbp_reboot_machine;
+ static Bit8u dbp_alphablend_base;
+ static float dbp_auto_target, dbp_last_fastforward;
++#ifdef BMDOS_CORE_POOL
++extern "C" int bmdos_debug_cycles; // BMDOS: log the automatic cycles' decisions (debug_cycles=1, below)
++#endif
+ static Bit32u dbp_lastmenuticks, dbp_framecount, dbp_emu_waiting, dbp_paused_work;
+ static Semaphore semDoContinue, semDidPause;
+ static retro_throttle_state dbp_throttle;
+@@ -1746,6 +1749,9 @@ static bool GFX_AdvanceFrame(bool force_skip, bool force_no_auto_adjust)
+ 		//recentEmulator += (Bit32u)frameOver;
+ 
+ 		Bit32s ratio = 0;
++		#ifdef BMDOS_CORE_POOL
++		const Bit32s bmdos_cycles_before = CPU_CycleMax; // BMDOS: for the limits and debug_cycles=1 (below)
++		#endif
+ 		Bit64s recentCyclesMaxSum = (Bit64s)CPU_CycleMax * recentCount;
+ 		if (recentCount > HISTORY_STEP/2 && St.HistoryEmulator[HISTORY_SIZE-1] && recentCyclesMaxSum >= recentCyclesSum && recentEmulator)
+ 		{
+@@ -1754,7 +1760,17 @@ static bool GFX_AdvanceFrame(bool force_skip, bool force_no_auto_adjust)
+ 
+ 			// scale ratio we are aiming for (1024 is no change)
+ 			ratio = frameTime * 1024 / recentEmulator;
++			#ifdef BMDOS_CORE_POOL
++			const Bit32s bmdos_raw_ratio = ratio;
++			#endif
+ 			ratio = (Bit32s)((double)ratio * ratio_not_removed);
++			#ifdef BMDOS_CORE_POOL
++			// BMDOS: emulation with time to spare is never slowed down. Scaled by the share of cycles
++			// not removed by the IO delay code, a game spinning on a port (Duke Nukem 3D waiting for its
++			// timer, 87-95% removed) read as far too slow: its cycles went from 58,000 to 12,000 with
++			// three quarters of the frame unused (Pi 5). The share still damps increases (below).
++			if (bmdos_raw_ratio >= 1024 && ratio < 1024) ratio = 1024;
++			#endif
+ 
+ 			// Don't allow very high ratio which can cause us to lock as we don't scale down
+ 			// for very low ratios. High ratio might result because of timing resolution
+@@ -1788,12 +1804,25 @@ static bool GFX_AdvanceFrame(bool force_skip, bool force_no_auto_adjust)
+ 			else if (!cpu.pmode && dbp_content_year >= 1995) limit = DBP_CyclesForYear(dbp_content_year, 1996); // enforce max from DBP_SetRealModeCycles
+ 			if (limit > (Bit64s)recentEmulator * 280) limit = (Bit32s)(recentEmulator * 280);
+ 			if (CPU_CycleMax > limit) CPU_CycleMax = limit;
++			#ifdef BMDOS_CORE_POOL
++			// BMDOS: at most halved at a time (every 4 frames). One long frame (a load, new code for the
++			// recompiler) took the cycles from 180,000 to the minimum within 12 frames, and a few seconds
++			// to come back; a sustained load is still met within a fraction of a second.
++			if (CPU_CycleMax < bmdos_cycles_before / 2) CPU_CycleMax = bmdos_cycles_before / 2;
++			#endif
+ 			if (CPU_CycleMax < (cpu.pmode ? 10000 : 1000)) CPU_CycleMax = (cpu.pmode ? 10000 : 1000);
+ 		}
+ 
+ 		//log_cb(RETRO_LOG_INFO, "[DBPTIMERS%4d] - EMU: %5d - FE: %5d - TARGET: %5d - EffectiveCycles: %6d - Limit: %6d|%6d - CycleMax: %6d - Scale: %5d\n",
+ 		//	St.HistoryCursor, (int)recentEmulator, (int)((recentFrameSum / recentCount) - recentEmulator), frameTime, 
+ 		//	recentCyclesSum / recentCount, (cpu.pmode ? 10000 : 1000), recentEmulator * 280, CPU_CycleMax, ratio);
++		#ifdef BMDOS_CORE_POOL
++		// BMDOS: the same, with debug_cycles=1 (bmdos_debug_cycles, src/port/platform.c)
++		if (bmdos_debug_cycles)
++			log_cb(RETRO_LOG_INFO, "[cycles] emu %5d us, frame %5d us, target %5d us, frames %u of %d, ratio %5d, cycles %6d -> %6d\n",
++				(int)recentEmulator, (int)(recentCount ? recentFrameSum / recentCount : 0), (int)frameTime,
++				(unsigned)recentCount, (int)HISTORY_STEP, (int)ratio, (int)bmdos_cycles_before, (int)CPU_CycleMax);
++		#endif
+ 	}
+ 	goto return_true;
+ }

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- DOSBox Pure's automatic cycles hold steady (`src/patches/dosbox_pure_auto_cycles_patch.diff`):
+  they were cut while the emulation had time to spare, when a game spun
+  on a port (Duke Nukem 3D waiting for its timer), and cut to the minimum
+  after one long frame (a load); Duke's cycles swung between 10,000 and
+  214,000 within seconds on the Pi 5. `debug_cycles=1` logs each decision
+- A sweep: leftovers from the parent projects in comments, the user
+  guide, the simulator's settings, compiler warnings
+
 ## 0.1.0 – 2026-11-25
 
 The first BMDOS: a bare metal MS-DOS PC for DOS games, with

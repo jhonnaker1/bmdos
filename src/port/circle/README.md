@@ -6,8 +6,8 @@ newlib and the Arm toolchain's libstdc++, which have the C library but no
 threads. This folder is what DOSBox Pure needs beyond those, so that it
 builds without changes for Circle (the Makefile's `DBP_PI_FLAGS`; its
 changes, in `src/patches/`, are a fix for USB sticks' paths, the Voodoo's
-workers on the other cores, and content changed without unloading the
-core). From BMAmiga, where
+workers on the other cores, content changed without unloading the core,
+and the automatic cycles). From BMAmiga, where
 Amiberry's libretro core runs on the same.
 
 ## Threads (`threads.c`, `libco/`)

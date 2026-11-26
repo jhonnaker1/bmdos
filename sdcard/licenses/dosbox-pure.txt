@@ -4,14 +4,16 @@ DOSBox Pure
 BMDOS's PC emulation is DOSBox Pure (https://codeberg.org/schelling/dosbox-pure),
 by Bernhard Schelling, a fork of DOSBox by the DOSBox Team, built as its
 libretro core (third_party/dosbox-pure in BMDOS's source). BMDOS changes
-it in three places (November 2026): fpath_nocase() in
+it in four places (November 2026): fpath_nocase() in
 dosbox_pure_libretro.cpp, so that a path starting with a volume name
 (USB:/) is a full path (src/patches/dosbox_pure_volume_path_patch.diff),
 and the 3dfx Voodoo's triangle workers in voodoo.cpp, which run on the
 Pi's other cores, with timers in mixer.cpp and midi_tsf.h
 (src/patches/dosbox_pure_core_pool_patch.diff), and retro_unload_game(),
 so that the next game loaded is new content
-(src/patches/dosbox_pure_unload_patch.diff). Its notice:
+(src/patches/dosbox_pure_unload_patch.diff), and GFX_AdvanceFrame()'s
+automatic cycles (src/patches/dosbox_pure_auto_cycles_patch.diff). Its
+notice:
 
   Copyright (C) 2020-2026 Bernhard Schelling
   Copyright (C) 2002-2021 The DOSBox Team
