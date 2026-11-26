@@ -7,6 +7,10 @@
   on a port (Duke Nukem 3D waiting for its timer), and cut to the minimum
   after one long frame (a load); Duke's cycles swung between 10,000 and
   214,000 within seconds on the Pi 5. `debug_cycles=1` logs each decision
+- Requests to the firmware from two cores at once no longer mix up
+  (`circle_property_tags_lock_patch`): on the Pi 5 the fan's temperature
+  reading on core 0 and the speed report on core 1 could swap answers
+  (once the fan read 2,400,000 °C and went to full speed)
 - A sweep: leftovers from the parent projects in comments, the user
   guide, the simulator's settings, compiler warnings
 
