@@ -1208,10 +1208,13 @@ static void show_frame(void)
 	else
 		osd_draw_notification(fb_pixels, fb_pitch_px, 16, pic_w, pic_h);
 	now = host_time();
-	/* Presenting takes a little more first (Circle's tasks get 1 ms,
-	   kernel.cpp's VideoPresent()). Taken for late by mistake, a frame is
-	   still shown at the next blank, and the next one waits. */
-	late = last_shown > 0.0 && now - last_shown > 1.0 / refresh_rate - 0.0025;
+	/* Only a frame past a whole refresh: one taken for late too early
+	   wasn't waited for, and two could reach the display between blanks
+	   (63 a second; the picture flickered). The Pi 4 and 5's display
+	   driver also tells for itself whether a frame has missed its blank
+	   (kms Display::EndFrame()), as presenting takes a little more first
+	   (Circle's tasks, the copy). */
+	late = last_shown > 0.0 && now - last_shown > 1.0 / refresh_rate;
 	host_video_present(!late);
 	last_shown = host_time();
 }

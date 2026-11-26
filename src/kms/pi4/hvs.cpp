@@ -22,7 +22,7 @@ namespace {
 // BMDOS's part of display list memory: two kernels, then two list
 // slots of 32 words each; 96 words from one of these bases, whichever
 // doesn't overlap the firmware's list.
-const unsigned RegionWords = 2 * hvs::KernelWords + 2 + 2 * 32;
+const unsigned RegionWords = 2 * hvs::KernelWords + 2 + 3 * 32;
 const unsigned RegionBases[] = {3072, 2048, 1024};
 // Line buffer memory for the one plane (words).
 const unsigned LbmBase = 32768;
@@ -32,8 +32,12 @@ const unsigned LbmBase = 32768;
 Hvs::Hvs(void)
     : m_Base(FromBus(hvs::Bus)), m_nPort(0), m_nChannel(0), m_nWidth(0), m_nHeight(0),
       m_nFirmwareList(0), m_nRegion(0), m_nKernelSmooth(0), m_nKernelSharp(0),
-      m_nNextSlot(0), m_bAttached(false) {
-  m_nSlot[0] = m_nSlot[1] = 0;
+      m_bAttached(false) {
+  for (unsigned i = 0; i < Slots; i++) {
+    m_nSlot[i] = 0;
+  }
+  m_nActiveSlot = m_nPendingSlot = NoSlot;
+  m_nPendingCount = 0;
 }
 
 uint32_t Hvs::Read(uint32_t reg) const { return read32(m_Base + reg); }
@@ -117,6 +121,8 @@ bool Hvs::Attach(void) {
   m_nKernelSharp = m_nRegion + hvs::KernelWords;
   m_nSlot[0] = m_nRegion + 2 * hvs::KernelWords + 2;
   m_nSlot[1] = m_nSlot[0] + 32;
+  m_nSlot[2] = m_nSlot[1] + 32;
+  m_nActiveSlot = m_nPendingSlot = NoSlot;
 
   uint32_t words[hvs::KernelWords];
   KernelWords(Filter::Smooth, words);
@@ -151,14 +157,28 @@ bool Hvs::Show(const Plane *plane) {
     words[0] = hvs::CtlEnd;
     n = 1;
   }
-  unsigned slot = m_nSlot[m_nNextSlot];
+  // The slot written last is shown once a frame has started since.
+  if (m_nPendingSlot != NoSlot && FrameCount() != m_nPendingCount) {
+    m_nActiveSlot = m_nPendingSlot;
+    m_nPendingSlot = NoSlot;
+  }
+  // A slot neither shown nor about to be (one written before the next
+  // frame, never shown, is free again).
+  unsigned index = 0;
+  while (index == m_nActiveSlot || index == m_nPendingSlot) {
+    index++;
+  }
+  unsigned slot = m_nSlot[index];
   for (unsigned i = 0; i < n; i++) {
     WriteList(slot + i, words[i]);
   }
   DataSyncBarrier();
   // Taken from the start of the next frame.
   Write(hvs::DispList(m_nChannel), slot);
-  m_nNextSlot ^= 1;
+  // The count read after the switch: a frame that started in between is
+  // taken for not yet, which only keeps a slot longer.
+  m_nPendingSlot = index;
+  m_nPendingCount = FrameCount();
   return true;
 }
 
@@ -187,6 +207,7 @@ bool Hvs::WaitForChange(unsigned from, unsigned timeout_ms) const {
 void Hvs::Restore(void) {
   if (m_bAttached) {
     Write(hvs::DispList(m_nChannel), m_nFirmwareList);
+     m_nActiveSlot = m_nPendingSlot = NoSlot;
   }
 }
 

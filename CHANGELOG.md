@@ -77,7 +77,9 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
 - Three picture buffers on the Pi 4 and 5's direct display (two only if
   three don't fit in the Pi 5's framebuffer): with two, a frame waited for
   the vertical blank that showed the one before, and Tomb Raider spent a
-  quarter of its time waiting (80-90% speed)
+  quarter of its time waiting (80-90% speed). A late frame is shown
+  without waiting for the blank it missed, and three display list slots
+  keep a second picture before a blank from overwriting the list shown
 - Every 10 s the log has "PC parts": how much of the time the Voodoo, the
   sound and the SoundFont synthesizer took
 

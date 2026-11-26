@@ -73,8 +73,15 @@ private:
   uint32_t m_nFirmwareList;    // the firmware's DISPLISTx, to restore
   unsigned m_nRegion;          // BMDOS's display list memory (words)
   unsigned m_nKernelSmooth, m_nKernelSharp;
-  unsigned m_nSlot[2];
-  unsigned m_nNextSlot;        // list slot written next: 0 or 1
+  // Three list slots: the one the HVS is showing, one it takes at the next
+  // frame, and one to write. With two, a second Show() before the next
+  // frame wrote over the list being shown (flicker), and late frames are
+  // shown without waiting for one.
+  enum { Slots = 3, NoSlot = Slots };
+  unsigned m_nSlot[Slots];
+  unsigned m_nActiveSlot;      // being shown, or NoSlot (the firmware's)
+  unsigned m_nPendingSlot;     // taken at the next frame, or NoSlot
+  unsigned m_nPendingCount;    // the frame count after it was written
   bool m_bAttached;
 };
 
