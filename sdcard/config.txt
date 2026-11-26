@@ -24,6 +24,11 @@ arm_64bit=1
 kernel_address=0x80000
 kernel=kernel8-rpi4.img
 armstub=armstub8-rpi4.bin
+# 1.8 GHz instead of 1.5: the clock the Pi 4 B has from revision 1.4 on
+# (and the Pi 400 has always), a fifth more for the PC. A Pi 4 B from
+# before 2020 (BCM2711B0) may need over_voltage=2 for it, or this line
+# taken out.
+arm_freq=1800
 # The Pi 5, Pi 500 and Pi 500+ (all match [pi5]). As in Circle's
 # boot/config64.txt; the Pi 5 needs no ARM stub. Its firmware sets the
 # framebuffer's depth from here rather than as asked: 32 bit.
