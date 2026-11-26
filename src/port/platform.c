@@ -595,6 +595,9 @@ static char system_dir[512];
 static char save_dir[512];
 void bmdos_apply_pad_types(void);
 static int core_shut_down;        /* RETRO_ENVIRONMENT_SHUTDOWN */
+/* debug_cycles=1: DOSBox Pure logs each decision of its automatic cycles
+   (src/patches/dosbox_pure_debug_cycles_patch.diff), every 4 frames. */
+int bmdos_debug_cycles;
 
 static void core_log(enum retro_log_level level, const char *fmt, ...)
 {
@@ -873,6 +876,7 @@ static int start_core(void)
 		retro_init();
 		started_once = TRUE;
 	}
+	bmdos_debug_cycles = host_option_int("debug_cycles", 0);
 	memset(&info, 0, sizeof info);
 	info.path = content;
 	core_shut_down = FALSE;

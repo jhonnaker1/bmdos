@@ -268,6 +268,7 @@ edited from the web UI. DOSBox Pure's own settings are in `bmdos.cfg` too
 | `audio_out`         | `auto`, `hdmi`, `headphones` | `auto`   | Where the sound goes (`auto`: HDMI, or the headphone jack if the display takes no sound) |
 | `audio_buffer_ms`   | 20 to 500 (at least 32 on the Pi 4, 40 on the Pi 5) | `80`     | Sound buffer; raise it if the sound breaks up |
 | `core_debug`        | `0`, `1`                     | `0`      | DOSBox Pure's debug messages in the log too |
+| `debug_cycles`      | `0`, `1`                     | `0`      | DOSBox Pure's automatic CPU speed in the log: what it measured and chose, every 4 frames |
 | `debug_keys`        | `0`, `1`                     | `0`      | Every key pressed in the log, for a key that doesn't reach the PC (it logs what is typed) |
 | `gpio_joysticks`    | `0`, `1`                     | `0`      | Joysticks wired to the GPIO pins (see Keyboard, mouse and gamepads) |
 | `enable_logging`    | `off`, `uart`, `file`        | `off`    | Where the log goes (see Logging) |
