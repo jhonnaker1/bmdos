@@ -1,12 +1,13 @@
 --- a/lib/translationtable64.cpp
 +++ b/lib/translationtable64.cpp
-@@ -129,11 +129,12 @@
+@@ -129,11 +129,13 @@
  		pDesc->UXN	     = 1;
  		pDesc->Ignored	     = 0;
  
-+		// BMAmiga: normal memory after the kernel's code stays executable,
-+		// for Amiberry's JIT, which compiles the Amiga's code into the heap;
-+		// device and coherent (DMA) memory are never executed.
++		// BMDOS (from BMAmiga): normal memory after the kernel's code stays
++		// executable, for DOSBox's dynamic recompiler, which writes the
++		// code it makes into the heap; device and coherent (DMA) memory are
++		// never executed.
  		extern u8 _etext;
  		if (nBaseAddress >= (u64) &_etext)
  		{

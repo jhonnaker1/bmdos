@@ -9,8 +9,8 @@
 //
 //   tools/pi4scaler/run_tests.sh
 //
-// This file is part of BMMacintosh, a bare metal 68k Macintosh emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
+// From BMMacintosh. This file is part of BMDOS, a bare metal MS-DOS PC
+// emulator for the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #include "../../src/av/layout.h"

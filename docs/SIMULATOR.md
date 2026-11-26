@@ -174,6 +174,10 @@ Useful settings, as environment variables:
 | `BMDOS_USB`                 | This many USB sticks plugged in from the start (the folders `usb/`, `usb2/`, `usb3/`); the script's `usb 1 1` plugs stick 1 in, `usb 1 0` pulls it out |
 | `BMDOS_SIM_POOL`            | Threads for the core pool (the Pi's cores 2 and 3, `src/corepool.h`): 2 by default, `0` for none |
 | `BMDOS_SIM_NO32`            | `1`: no 32-bit frame buffer, so the PC's picture is RGB565 |
+| `BMDOS_SIM_CHUNK`           | The sound output takes this many frames at a time, as the Pi 5's HDMI does (1536); 0: smoothly |
+| `BMDOS_SIM_PACE`            | `1`: the virtual clock no faster than the real one, for a partner that runs in real time (FujiNet-PC) |
+| `BMDOS_SIM_CONNECT_FRAMES`  | Background work (the modem's connecting) starts this many frames late, as a slow server would |
+| `BMDOS_DNS`                 | The DNS server (default: the PC's own, from `/etc/resolv.conf`) |
 
 ## On the Pi itself
 

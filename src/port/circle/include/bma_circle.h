@@ -1,8 +1,9 @@
 /*
- * bma_circle.h - included before each of Amiberry's files when it is built
- * for the Pi (-include, see src/port/circle/circle.mk), so that Amiberry builds
- * unmodified with newlib and the toolchain's libstdc++, which have no
- * threads and lack some Linux names.
+ * bma_circle.h - included before each of DOSBox Pure's files when it is
+ * built for the Pi (-include, the Makefile's DBP_PI_FLAGS), so that it
+ * builds unmodified with newlib and the toolchain's libstdc++, which have
+ * no threads and lack some Linux names. Written for Amiberry (BMAmiga):
+ * the notes below that name it are its.
  *
  * C:
  *  - Large file names (off64_t, fseeko64, stat64, ...): newlib's off_t is

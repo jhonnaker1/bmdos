@@ -1,11 +1,12 @@
 /*
  * osd.h - BMDOS's on-screen display: menus, file browser, text entry.
  *
- * Previous's own settings dialog belongs to its SDL front end, so BMDOS
- * draws its own menu (everything about the emulated NeXT, and BMDOS's
- * settings), straight into the display's frame buffer. While the display is open the emulation is paused.
+ * DOSBox Pure's own on-screen menu needs a frontend to open it, so BMDOS
+ * draws its own menu (the PC's content and DOSBox Pure's settings, and
+ * BMDOS's), straight into the display's frame buffer. While the display
+ * is open the emulation is paused.
  *
- * This file is part of BMDOS, a bare metal NeXT emulator for
+ * This file is part of BMDOS, a bare metal MS-DOS PC emulator for
  * the Raspberry Pi. See LICENSE for licensing details.
  */
 

@@ -13,6 +13,7 @@ Patches are applied to the submodule revisions pinned by circle-stdlib v21
 | Patch | Description |
 | --- | --- |
 | `circle_bolt_keyboard_patch.diff` | Adds Logitech Bolt keyboard receiver support (from BMC64). |
+| `circle_jit_exec_patch.diff` | Leaves normal memory after the kernel's code executable (Circle sets `PXN` on all of it in `lib/translationtable64.cpp`), so that DOSBox's dynamic recompiler can run the code it writes into the heap; device and coherent (DMA) memory stay never-executable. From BMAmiga (Amiberry's JIT). |
 | `circle_linux_bug_patch.diff` | Turns off `BUG_ON`. Circle's Linux emulation, which VCHIQ uses for the display and sound, asserts with `BUG_ON` that it only runs on core 0; BMDOS calls it from core 1, where the emulator runs (as BMC64 does with VICE). Without it the Pi halts with `mutex.cpp(9): assertion failed`. From BMC64's `circle_patch.diff`. |
 | `circle_fatfs_exfat_patch.diff` | Turns on FatFs's exFAT (`FF_FS_EXFAT` in `addon/fatfs/ffconf.h`): USB sticks over 32 GB usually come formatted exFAT. It changes FatFs's structures, so circle-newlib is built with it too (`make_all.sh` builds both). From BMAmiga (without its SD2: change: BMDOS doesn't mount the card's second partition). |
 | `circle_fatfs_fastseek_patch.diff` | Turns on FatFs's fast seek (`FF_USE_FASTSEEK` in `addon/fatfs/ffconf.h`), for `newlib_fastseek_patch.diff`. It changes FatFs's `FIL`, so circle-newlib must be built with it too (`make_all.sh` builds both). |

@@ -10,7 +10,7 @@ it is in BMDOS.
 
 | Project | Newest (checked 2026-11-20) | What BMDOS inherits | In BMDOS |
 | --- | --- | --- | --- |
-| BMA800XL (aminch/bma800xl) | 1.4.6 released 2026-11-15; 1.4.7 in its changelog (2026-11-19, not yet released) | 1.4.3–1.4.6: USB sticks and the file browser's [ Drives ] page, the Pi 5's fan (`src/pi45/`), `circle_tcp_receive_window_patch`, web UI uploads, idle connections and sorting. 1.4.7: idle connections kept open until a request arrives (Safari). bda317d (2026-11-20): the TSan "unsupported VMA range" fallback in `tools/pi4scaler`, which came from BMNeXT | All in, through BMNeXT 0.3.0 |
+| BMA800XL (aminch/bma800xl) | 1.4.6 released 2026-11-15 (1.4.7 below) | 1.4.3–1.4.6: USB sticks and the file browser's [ Drives ] page, the Pi 5's fan (`src/pi45/`), `circle_tcp_receive_window_patch`, web UI uploads, idle connections and sorting. 1.4.7: idle connections kept open until a request arrives (Safari). bda317d (2026-11-20): the TSan "unsupported VMA range" fallback in `tools/pi4scaler`, which came from BMNeXT | All in, through BMNeXT 0.3.0 |
 | BMA800XL | 1.4.7 released 2026-11-21 (checked 2026-11-25) | The sound buffer at least 40 ms on the Pi 5 and 32 ms on the Pi 4 (its Safari fix BMDOS has through BMNeXT) | `open_sound()` in `src/port/platform.c` |
 | BMC64 (randyrossi/bmc64) | fc75101, 2026-11-19 (the same Safari fix, as aminch's PR #426) | The Safari fix (BMA800XL 1.4.7, above). Its Python release tests (`tools/automated_release_testing`) are BMC64's own | The fix, through BMNeXT |
 | Circle (rsta2/circle) | Step 51.1.1, 2026-09-25 | Nothing new: the family is on it already, through circle-stdlib v21 (2026-09-25, its newest) | circle-stdlib v21 |

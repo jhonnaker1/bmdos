@@ -34,7 +34,10 @@ simulator (`tools/hostsim`). See the [changelog](CHANGELOG.md).
 - DOSBox Pure's own DOS: no DOS needed. Windows 9x or MS-DOS hard disk
   images of your own can be booted too
 - Sound Blaster, Gravis Ultrasound, AdLib, PC speaker, Tandy and Disney
-  sound, General MIDI with a sound font, as DOSBox Pure has them
+  sound, General MIDI with a sound font, as DOSBox Pure has them; CD
+  audio from CUE/BIN images
+- The 3dfx Voodoo, in software, its triangles drawn on three of the Pi's
+  cores (the Tomb Raider demo runs at full speed on a Pi 5)
 - USB keyboards and mice, and USB gamepads: DOSBox Pure maps the gamepad
   for the games it knows, to keys otherwise, or makes it a PC joystick
 - DOSBox Pure's on-screen menu and keyboard, and its gamepad mapper
@@ -42,7 +45,9 @@ simulator (`tools/hostsim`). See the [changelog](CHANGELOG.md).
   gamepads, video, sound and network
 - Optional Ethernet or Wi-Fi with BMC64's web UI: manage the SD card from a
   browser and start games
-- Games on USB sticks (up to three) as well as the SD card
+- Games on USB sticks (up to three, FAT32 or exFAT) as well as the SD card
+- FujiNet: a FujiNet-PC on the network as the PC's serial port (see the
+  User Guide)
 - No shutdown needed: just switch it off
 
 ## Games

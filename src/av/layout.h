@@ -15,12 +15,12 @@
 // sharp, with fewer repeats; otherwise, as wide as the display and as tall
 // as its shape makes it.
 //
-// This file is part of BMMacintosh, a bare metal 68k Macintosh emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
+// From BMMacintosh. This file is part of BMDOS, a bare metal MS-DOS PC
+// emulator for the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMMAC_AV_LAYOUT_H
-#define BMMAC_AV_LAYOUT_H
+#ifndef BMDOS_AV_LAYOUT_H
+#define BMDOS_AV_LAYOUT_H
 
 struct PictureLayout {
   unsigned x, y, w, h;  // on the display, centred

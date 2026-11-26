@@ -26,9 +26,9 @@ static const char FromDisplay[] = "kms";
 static const unsigned FrameTimeoutMs = 100;
 
 Display::Display(void)
-    : m_bAttached(false), m_nPitch(0), m_nBufferWords(0), m_nBack(0),
-      m_nBuffers(0), m_nShown(0), m_nQueued(0), m_nPaceCount(0),
-      m_bFlipPending(false), m_nFlipCount(0), m_bHavePicture(false),
+    : m_bAttached(false), m_nBuffers(0), m_nPitch(0), m_nBufferWords(0),
+      m_nBack(0), m_nShown(0), m_nQueued(0), m_bFlipPending(false),
+      m_nFlipCount(0), m_nPaceCount(0), m_bHavePicture(false),
       m_bTimedOut(false) {
   for (unsigned i = 0; i < MaxBuffers; i++) {
     m_pBuffer[i] = 0;

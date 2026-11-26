@@ -4,9 +4,9 @@ BMDOS turns a Raspberry Pi 4 or 5 into an MS-DOS PC for DOS games. It runs
 the DOSBox Pure emulator on the bare hardware, so it starts in a couple of
 seconds and can be switched off at any time.
 
-BMDOS 0.1.0 has run only in the PC simulator (`tools/hostsim`, see
-[SIMULATOR.md](SIMULATOR.md)); the Pi 4 and Pi 5 kernels build but
-haven't been tried on a Pi yet.
+BMDOS 0.1.0 has been tried on a Pi 5 and a Pi 4 (see the
+[changelog](../CHANGELOG.md) for what was tested where); everything also
+runs in the PC simulator (`tools/hostsim`, see [SIMULATOR.md](SIMULATOR.md)).
 
 ## The SD card
 
@@ -86,7 +86,7 @@ A USB gamepad (up to four) can be, in the menu's *Gamepads*:
 - **Gravis GamePad**, **Thrustmaster Flight Stick**, **Mouse**, **Off**.
 
 A joystick wired to the GPIO pins (BMC64's wiring) joins the first or
-second gamepad.
+second gamepad, with `gpio_joysticks=1` in `cmdline.txt`.
 
 ## Display
 
@@ -268,6 +268,8 @@ edited from the web UI. DOSBox Pure's own settings are in `bmdos.cfg` too
 | `audio_out`         | `auto`, `hdmi`, `headphones` | `auto`   | Where the sound goes (`auto`: HDMI, or the headphone jack if the display takes no sound) |
 | `audio_buffer_ms`   | 20 to 500 (at least 32 on the Pi 4, 40 on the Pi 5) | `80`     | Sound buffer; raise it if the sound breaks up |
 | `core_debug`        | `0`, `1`                     | `0`      | DOSBox Pure's debug messages in the log too |
+| `debug_keys`        | `0`, `1`                     | `0`      | Every key pressed in the log, for a key that doesn't reach the PC (it logs what is typed) |
+| `gpio_joysticks`    | `0`, `1`                     | `0`      | Joysticks wired to the GPIO pins (see Keyboard, mouse and gamepads) |
 | `enable_logging`    | `off`, `uart`, `file`        | `off`    | Where the log goes (see Logging) |
 | `network`           | `off`, `ethernet`, `wifi`    | `off`    | Networking (see Networking and the web UI) |
 | `webui`             | `0`, `1`                     | `1`      | Web UI when networking is on |

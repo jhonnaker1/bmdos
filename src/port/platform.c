@@ -885,7 +885,9 @@ static int start_core(void)
 	} else if (content[0] != '\0' && stat(content, &st) != 0) {
 		char text[OSD_COLS + 1];
 		LOG("%s is not there: starting without it\n", content);
-		snprintf(text, sizeof text, "Not found: %s", base_name(content));
+		/* As much of the name as fits on the line. */
+		snprintf(text, sizeof text, "Not found: %.*s", (int) (sizeof text - 12),
+		         base_name(content));
 		osd_notify(text);
 		ok = retro_load_game(NULL);
 	} else if (content[0] != '\0') {
