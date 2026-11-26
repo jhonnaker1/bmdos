@@ -260,8 +260,17 @@ void bmdos_set_volume(int v)
 static void open_sound(void)
 {
 	unsigned ms = (unsigned) host_option_int("audio_buffer_ms", 80);
-	if (ms < 20)
-		ms = 20;
+	/* The Pi 4 and 5's HDMI sound breaks up below 32 and 40 ms
+	   (BMA800XL 1.4.7). */
+#if defined(RASPPI) && RASPPI >= 5
+	const unsigned least = 40;
+#elif defined(RASPPI) && RASPPI == 4
+	const unsigned least = 32;
+#else
+	const unsigned least = 20;
+#endif
+	if (ms < least)
+		ms = least;
 	if (ms > 500)
 		ms = 500;
 	ao_latency = ao_rate * ms / 1000;

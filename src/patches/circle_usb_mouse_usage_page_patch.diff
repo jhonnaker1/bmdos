@@ -1,0 +1,84 @@
+diff --git a/lib/usb/usbmouse.cpp b/lib/usb/usbmouse.cpp
+index 9cac434..5c29657 100644
+--- a/lib/usb/usbmouse.cpp
++++ b/lib/usb/usbmouse.cpp
+@@ -23,6 +23,7 @@
+ #include <circle/usb/usbmouse.h>
+ #include <circle/usb/usbhid.h>
+ #include <circle/logger.h>
++#include <circle/util.h>
+ #include <assert.h>
+ 
+ // HID Report Items from HID 1.11 Section 6.2.2
+@@ -36,6 +37,7 @@
+ #define HID_REPORT_ID       0x84
+ 
+ // HID Report Usage Pages from HID Usage Tables 1.12 Section 3, Table 1
++#define HID_USAGE_PAGE_GENERIC_DESKTOP 0x01
+ #define HID_USAGE_PAGE_BUTTONS         0x09
+ 
+ // HID Report Usages from HID Usage Tables 1.12 Section 4, Table 6
+@@ -89,6 +91,7 @@ boolean CUSBMouseDevice::Configure (void)
+ 		return FALSE;
+ 	}
+ 
++	memset (&m_MouseReport, 0, sizeof m_MouseReport);
+ 	DecodeReport ();
+ 
+ 	// ignoring unsupported HID interface
+@@ -115,7 +118,8 @@ boolean CUSBMouseDevice::Configure (void)
+ void CUSBMouseDevice::ReportHandler (const u8 *pReport, unsigned nReportSize)
+ {
+ 	if (   pReport != 0
+-	    && nReportSize == m_MouseReport.byteSize)
++	    && nReportSize == m_MouseReport.byteSize
++	    && (m_MouseReport.id == 0 || pReport[0] == m_MouseReport.id))
+ 	{
+ 		if (m_pMouseDevice != 0)
+ 		{
+@@ -230,6 +234,7 @@ void CUSBMouseDevice::DecodeReport (void)
+ 	s32 item, arg;
+ 	u32 offset = 0, size = 0, count = 0;
+ 	u32 id = 0;
++	u32 usagePage = 0;
+ 	u32 nCollections = 0;
+ 	u32 itemIndex = 0;
+ 	boolean parse = FALSE;
+@@ -267,6 +272,15 @@ void CUSBMouseDevice::DecodeReport (void)
+ 			break;
+ 		}
+ 
++		// usages are only meaningful together with their usage page:
++		// some receivers (e.g. 1ea7:0066) put a vendor collection with
++		// usages 1 and 2 before the mouse, which must not count as a mouse
++		if ((item & 0xFC) == HID_USAGE_PAGE)
++		{
++			usagePage = (u32) arg & 0xFFFF;
++		}
++		boolean bGenericDesktop = usagePage == HID_USAGE_PAGE_GENERIC_DESKTOP;
++
+ 		switch(item & 0xFC)
+ 		{
+ 		case HID_COLLECTION:
+@@ -278,6 +292,10 @@ void CUSBMouseDevice::DecodeReport (void)
+ 				parse = FALSE;
+ 			break;
+ 		case HID_USAGE:
++			if (!bGenericDesktop)
++			{
++				break;
++			}
+ 			if (arg == HID_USAGE_MOUSE)
+ 			{
+ 				foundMouseUsage = TRUE;
+@@ -329,6 +347,10 @@ void CUSBMouseDevice::DecodeReport (void)
+ 			}
+ 			break;
+ 		case HID_USAGE:
++			if (!bGenericDesktop)
++			{
++				break;
++			}
+ 			switch(arg)
+ 			{
+ 			case HID_USAGE_X:

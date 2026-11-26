@@ -236,7 +236,7 @@ Settings: `fujinet=1`, `fujinet_host` (the computer's address),
 
 ## USB sticks
 
-Up to three USB sticks (FAT32) can hold games
+Up to three USB sticks (FAT32 or exFAT) can hold games
 as well as the card: they are `USB:`, `USB2:` and `USB3:`, under *[ Drives ]*
 in the menu's file browser and as buttons in the web UI. A stick can be
 plugged in and pulled out while BMDOS runs; pulling out the one the game
@@ -266,7 +266,7 @@ edited from the web UI. DOSBox Pure's own settings are in `bmdos.cfg` too
 | `sound`             | `0`, `1`                     | `1`      | Sound on or off |
 | `volume`            | 0 to 100                     | `100`    | Sound volume |
 | `audio_out`         | `auto`, `hdmi`, `headphones` | `auto`   | Where the sound goes (`auto`: HDMI, or the headphone jack if the display takes no sound) |
-| `audio_buffer_ms`   | 20 to 500                    | `80`     | Sound buffer; raise it if the sound breaks up |
+| `audio_buffer_ms`   | 20 to 500 (at least 32 on the Pi 4, 40 on the Pi 5) | `80`     | Sound buffer; raise it if the sound breaks up |
 | `core_debug`        | `0`, `1`                     | `0`      | DOSBox Pure's debug messages in the log too |
 | `enable_logging`    | `off`, `uart`, `file`        | `off`    | Where the log goes (see Logging) |
 | `network`           | `off`, `ethernet`, `wifi`    | `off`    | Networking (see Networking and the web UI) |

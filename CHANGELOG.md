@@ -80,6 +80,11 @@ The first BMDOS: a bare metal MS-DOS PC for DOS games, with
   quarter of its time waiting (80-90% speed). A late frame is shown
   without waiting for the blank it missed, and three display list slots
   keep a second picture before a blank from overwriting the list shown
+- From BMA800XL 1.4.7: the sound buffer is at least 32 ms on the Pi 4 and
+  40 ms on the Pi 5 (`audio_buffer_ms`), as less breaks up
+- From BMAmiga: USB sticks formatted exFAT (`circle_fatfs_exfat_patch`),
+  and USB mouse receivers whose report descriptor has a vendor collection
+  before the mouse (`circle_usb_mouse_usage_page_patch`)
 - Every 10 s the log has "PC parts": how much of the time the Voodoo, the
   sound and the SoundFont synthesizer took
 
